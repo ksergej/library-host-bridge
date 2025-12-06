@@ -1,0 +1,128 @@
+############################
+# OS-specific (macOS / Windows)
+############################
+.DS_Store
+Thumbs.db
+
+############################
+# Java / Maven / Gradle
+############################
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+# Maven wrapper (обычно коммитим, но временные файлы можно игнорировать)
+.mvn/timing.properties
+
+# Gradle (на будущее, если появится)
+.gradle/
+build/
+gradle-app.setting
+!gradle/wrapper/gradle-wrapper.jar
+
+# Compiled class files
+*.class
+
+# JVM crash logs
+hs_err_pid*
+replay_pid*
+
+############################
+# Spring Boot
+############################
+*.pid
+
+############################
+# IntelliJ IDEA
+############################
+.idea/
+*.iml
+*.ipr
+*.iws
+
+############################
+# VS Code
+############################
+.vscode/
+.history/
+*.code-workspace
+
+############################
+# Eclipse / другие IDE
+############################
+.project
+.classpath
+.settings/
+
+############################
+# Python / Ansible (host-library-infra/ansible)
+############################
+# Virtualenv
+.venv/
+venv/
+env/
+ENV/
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ansible
+.ansible/
+*.retry
+
+############################
+# Logs / temp files
+############################
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*.orig
+
+############################
+# Codex CLI / AI tools
+############################
+.codex/
+codex.log
+
+############################
+# Local config / secrets (если будут)
+############################
+.env
+.env.local
+*.local.properties
+*.secret
+*.secrets
+
+############################
+# Archives / dumps
+############################
+*.tar
+*.tar.gz
+*.gz
+*.zip
+*.7z
+*.rar
+*.tmp
+
+############################
+# Other misc
+############################
+# MacOS Finder attributes
+.Spotlight-V100
+.Trashes
+
+# Node / JS (если вдруг появится фронтенд)
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
