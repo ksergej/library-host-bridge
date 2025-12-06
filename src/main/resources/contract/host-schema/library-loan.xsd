@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://company.com/library/host/schema"
+           xmlns="http://company.com/library/host/schema"
+           elementFormDefault="qualified">
+
+    <xs:element name="HostBorrowRequest" type="HostBorrowRequest"/>
+    <xs:element name="HostBorrowResponse" type="HostBorrowResponse"/>
+
+    <xs:complexType name="HostBorrowRequest">
+        <xs:sequence>
+            <xs:element name="user" type="HostUser"/>
+            <xs:element name="book" type="HostBook"/>
+            <xs:element name="requestedDueDate" type="xs:date" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="HostBorrowResponse">
+        <xs:sequence>
+            <xs:element name="loan" type="HostLoan" minOccurs="0"/>
+            <xs:element name="status" type="xs:string"/>
+            <xs:element name="message" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="HostBook">
+        <xs:sequence>
+            <xs:element name="id" type="xs:string"/>
+            <xs:element name="title" type="xs:string" minOccurs="0"/>
+            <xs:element name="author" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="HostUser">
+        <xs:sequence>
+            <xs:element name="id" type="xs:string"/>
+            <xs:element name="name" type="xs:string" minOccurs="0"/>
+            <xs:element name="email" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="HostLoan">
+        <xs:sequence>
+            <xs:element name="loanId" type="xs:string" minOccurs="0"/>
+            <xs:element name="user" type="HostUser"/>
+            <xs:element name="book" type="HostBook"/>
+            <xs:element name="borrowDate" type="xs:date" minOccurs="0"/>
+            <xs:element name="dueDate" type="xs:date" minOccurs="0"/>
+            <xs:element name="returnDate" type="xs:date" minOccurs="0"/>
+            <xs:element name="status" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+</xs:schema>
