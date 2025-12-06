@@ -1,0 +1,104 @@
+---
+- name: Deploy LIBMQTST COBOL + JCL
+  hosts: zos_xplore
+  gather_facts: no
+
+  vars:
+    ansible_connection: ssh
+
+    cobol_pds: "{{ hlq }}.COBOL"
+    jcl_pds:   "{{ hlq }}.JCL"
+    load_pds:  "{{ hlq }}.LOAD"
+
+  environment: "{{ environment_vars }}"
+
+  collections:
+    - ibm.ibm_zos_core
+
+  tasks:
+    - name: Create COBOL PDS
+      zos_data_set:
+        name: "{{ cobol_pds }}"
+        type: PDS
+        state: present
+        record_length: 80
+        block_size: 0
+        space_primary: 5
+        space_secondary: 5
+        space_type: CYL
+
+    - name: Create JCL PDS
+      zos_data_set:
+        name: "{{ jcl_pds }}"
+        type: PDS
+        state: present
+        record_length: 80
+        block_size: 0
+        space_primary: 5
+        space_secondary: 5
+        space_type: CYL
+
+    - name: Create LOAD PDSE
+      zos_data_set:
+        name: "{{ load_pds }}"
+        type: PDSE
+        state: present
+        record_length: 0
+        block_size: 0
+        space_primary: 10
+        space_secondary: 5
+        space_type: CYL
+
+    - name: Upload COBOL program LIBMQTST
+      zos_copy:
+        src: "../../cobol/LIBMQTST.cbl"
+        dest: "{{ cobol_pds }}(LIBMQTST)"
+        encoding:
+          from: ISO8859-1
+          to: IBM-1047
+
+    - name: Upload compile JCL LIBMQTSTC
+      zos_copy:
+        src: "../../jcl/LIBMQTSTC.jcl"
+        dest: "{{ jcl_pds }}(LIBMQC)"
+        encoding:
+          from: ISO8859-1
+          to: IBM-1047
+
+    - name: Upload run JCL LIBMQTST
+      zos_copy:
+        src: "../../jcl/LIBMQTST.jcl"
+        dest: "{{ jcl_pds }}(LIBMQRUN)"
+        encoding:
+          from: ISO8859-1
+          to: IBM-1047
+
+    - name: Upload test JCL LIBTEST01
+      zos_copy:
+        src: "../../jcl/test/LIBTEST01.jcl"
+        dest: "{{ jcl_pds }}(LIBTEST1)"
+        encoding:
+          from: ISO8859-1
+          to: IBM-1047
+
+    - name: Submit compile job LIBMQC
+      zos_job_submit:
+        src: "{{ jcl_pds }}(LIBMQC)"
+        location: DATA_SET
+        wait: true
+        max_rc: 8
+      register: compile_job
+
+    - debug:
+        msg: "Compile RC={{ compile_job.jobs[0].ret_code.msg }}"
+
+    - name: Submit run job LIBMQRUN
+      zos_job_submit:
+        src: "{{ jcl_pds }}(LIBMQRUN)"
+        location: DATA_SET
+        wait: true
+        max_rc: 8
+      register: run_job
+
+    - debug:
+        msg: "Run RC={{ run_job.jobs[0].ret_code.msg }}"

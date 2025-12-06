@@ -1,0 +1,16 @@
+//LIBSCHEMA JOB (ACCT),'CREATE LIB SCHEMA',
+//         CLASS=A,MSGCLASS=X,NOTIFY=&SYSUID
+//*  Creates LIBRARY schema and tables using DSNTEP2
+//STEP1   EXEC PGM=IKJEFT01,REGION=0M
+//SYSTSPRT DD SYSOUT=*
+//SYSPRINT DD SYSOUT=*
+//SYSUDUMP DD SYSOUT=*
+//SYSTSIN  DD *
+  DSN SYSTEM(DB2A)
+  RUN PROGRAM(DSNTEP2) PLAN(DSNTEP2) -
+      LIB('DB2A.DSNLOAD')
+  END
+/*
+//SYSIN    DD *
+-- Paste contents of db2/schema.sql here or point SYSIN to a dataset
+/*

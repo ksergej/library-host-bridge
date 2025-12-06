@@ -1,0 +1,51 @@
+---
+- name: Deploy DB2 LIBRARY schema (JCL-driven)
+  hosts: zos_xplore
+  gather_facts: no
+
+  vars:
+    ansible_connection: ssh
+
+  environment: "{{ environment_vars }}"
+
+  collections:
+    - ibm.ibm_zos_core
+
+  tasks:
+    - name: Upload LIBSCHEMA.jcl
+      zos_copy:
+        src: "../../db2/jobs/LIBSCHEMA.jcl"
+        dest: "{{ hlq }}.JCL(LIBSCHEMA)"
+        encoding:
+          from: ISO8859-1
+          to: IBM-1047
+
+    - name: Upload LIBDATA.jcl
+      zos_copy:
+        src: "../../db2/jobs/LIBDATA.jcl"
+        dest: "{{ hlq }}.JCL(LIBDATA)"
+        encoding:
+          from: ISO8859-1
+          to: IBM-1047
+
+    - name: Submit schema job LIBSCHEMA
+      zos_job_submit:
+        src: "{{ hlq }}.JCL(LIBSCHEMA)"
+        location: DATA_SET
+        wait: true
+        max_rc: 8
+      register: schema_job
+
+    - debug:
+        msg: "Schema RC={{ schema_job.jobs[0].ret_code.msg }}"
+
+    - name: Submit data job LIBDATA
+      zos_job_submit:
+        src: "{{ hlq }}.JCL(LIBDATA)"
+        location: DATA_SET
+        wait: true
+        max_rc: 8
+      register: data_job
+
+    - debug:
+        msg: "Data RC={{ data_job.jobs[0].ret_code.msg }}"

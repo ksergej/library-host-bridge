@@ -1,0 +1,31 @@
+---
+- name: Smoke test z/OS connectivity
+  hosts: zos_xplore
+  gather_facts: no
+
+  vars:
+    ansible_connection: ssh
+
+  environment: "{{ environment_vars }}"
+
+  collections:
+    - ibm.ibm_zos_core
+
+  tasks:
+    - name: Ping host
+      ansible.builtin.ping:
+
+    - name: Show Python version on z/OS
+      ansible.builtin.command: "{{ PYZ }}/bin/python3 --version"
+      register: pyver
+
+    - debug:
+        var: pyver.stdout
+
+    - name: Check import zoautil_py
+      ansible.builtin.command: >
+        {{ PYZ }}/bin/python3 -c "import zoautil_py; print('ZOAU OK')"
+      register: zoauchk
+
+    - debug:
+        var: zoauchk.stdout
