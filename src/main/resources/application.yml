@@ -1,2 +1,8 @@
 server:
   port: 8080
+
+mq:
+  library:
+    request-queue: LIB.REQ.TEST
+    reply-queue: LIB.REP.TEST
+    timeout: 5s
