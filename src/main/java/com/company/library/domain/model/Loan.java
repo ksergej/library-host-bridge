@@ -11,7 +11,15 @@ public class Loan {
         this.bookId = bookId;
     }
 
-    public String getId() { return id; }
-    public String getUserId() { return userId; }
-    public String getBookId() { return bookId; }
+    public String getId() {
+        return id;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public String getBookId() {
+        return bookId;
+    }
 }
