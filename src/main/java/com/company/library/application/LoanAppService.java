@@ -1,7 +1,7 @@
 package com.company.library.application;
 
 import com.company.library.domain.model.Loan;
-import com.company.library.domain.port.LibraryHostPort;
+import com.company.library.ports.LibraryHostPort;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -13,11 +13,7 @@ public class LoanAppService {
         this.libraryHostPort = libraryHostPort;
     }
 
-    public Loan borrowBook(String userId, String bookId) {
-        return libraryHostPort.borrowBook(userId, bookId);
-    }
-
-    public Loan returnBook(String userId, String bookId) {
-        return libraryHostPort.returnBook(userId, bookId);
+    public Loan borrowBook(Loan loan) {
+        return libraryHostPort.borrowBook(loan);
     }
 }

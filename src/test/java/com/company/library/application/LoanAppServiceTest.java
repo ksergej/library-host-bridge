@@ -1,0 +1,40 @@
+package com.company.library.application;
+
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.company.library.domain.model.Loan;
+import com.company.library.ports.LibraryHostPort;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+@ExtendWith(MockitoExtension.class)
+class LoanAppServiceTest {
+
+    @Mock
+    private LibraryHostPort libraryHostPort;
+
+    private LoanAppService loanAppService;
+
+    @BeforeEach
+    void setUp() {
+        loanAppService = new LoanAppService(libraryHostPort);
+    }
+
+    @Test
+    void borrowBookDelegatesToHostPort() {
+        Loan request = new Loan(null, "user-1", "book-1");
+        Loan response = new Loan("loan-1", "user-1", "book-1");
+
+        when(libraryHostPort.borrowBook(request)).thenReturn(response);
+
+        Loan result = loanAppService.borrowBook(request);
+
+        assertSame(response, result);
+        verify(libraryHostPort).borrowBook(request);
+    }
+}
