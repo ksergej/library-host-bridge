@@ -10,6 +10,8 @@ import com.company.library.config.LibraryMqProperties;
 import com.company.library.domain.model.Loan;
 import com.company.library.gateway.CicsMqGatewayTemplate;
 import com.company.library.gateway.HostCommunicationException;
+import com.company.library.gateway.HostTimeoutException;
+import com.company.library.ports.LibraryHostUnavailableException;
 import java.time.Duration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -66,6 +68,18 @@ class LibraryMqAdapterTest {
         when(gateway.callHost(request, "LIB.REQ", "LIB.REP", Duration.ofSeconds(3)))
             .thenThrow(new HostCommunicationException("fail"));
 
-        assertThrows(HostCommunicationException.class, () -> adapter.borrowBook(input));
+        assertThrows(LibraryHostUnavailableException.class, () -> adapter.borrowBook(input));
+    }
+
+    @Test
+    void borrowBookWrapsTimeout() {
+        Loan input = new Loan("loan-1", "user-1", "book-1");
+        byte[] request = "req".getBytes();
+
+        when(translator.toHostRequest(input)).thenReturn(request);
+        when(gateway.callHost(request, "LIB.REQ", "LIB.REP", Duration.ofSeconds(3)))
+            .thenThrow(new HostTimeoutException("timeout"));
+
+        assertThrows(LibraryHostUnavailableException.class, () -> adapter.borrowBook(input));
     }
 }

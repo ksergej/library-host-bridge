@@ -4,7 +4,10 @@ import com.company.library.adapters.mq.translator.LibraryMessageTranslator;
 import com.company.library.config.LibraryMqProperties;
 import com.company.library.domain.model.Loan;
 import com.company.library.gateway.CicsMqGatewayTemplate;
+import com.company.library.gateway.HostCommunicationException;
+import com.company.library.gateway.HostTimeoutException;
 import com.company.library.ports.LibraryHostPort;
+import com.company.library.ports.LibraryHostUnavailableException;
 import org.springframework.stereotype.Component;
 
 /**
@@ -27,13 +30,19 @@ public class LibraryMqAdapter implements LibraryHostPort {
 
     @Override
     public Loan borrowBook(Loan loan) {
-        byte[] requestPayload = translator.toHostRequest(loan);
-        byte[] responsePayload = gateway.callHost(
-            requestPayload,
-            properties.getRequestQueue(),
-            properties.getReplyQueue(),
-            properties.getTimeout()
-        );
-        return translator.fromHostResponse(responsePayload);
+        try {
+            byte[] requestPayload = translator.toHostRequest(loan);
+            byte[] responsePayload = gateway.callHost(
+                requestPayload,
+                properties.getRequestQueue(),
+                properties.getReplyQueue(),
+                properties.getTimeout()
+            );
+            return translator.fromHostResponse(responsePayload);
+        } catch (HostTimeoutException ex) {
+            throw new LibraryHostUnavailableException("Host timeout while borrowing book", ex);
+        } catch (HostCommunicationException ex) {
+            throw new LibraryHostUnavailableException("Host communication failed while borrowing book", ex);
+        }
     }
 }

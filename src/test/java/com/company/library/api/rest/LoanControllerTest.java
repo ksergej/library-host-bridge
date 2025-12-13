@@ -18,7 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = LoanController.class)
-@Import({LoanRestMapperImpl.class})
+@Import({LoanRestMapperImpl.class, GlobalExceptionHandler.class})
 class LoanControllerTest {
 
     @Autowired
@@ -49,5 +49,23 @@ class LoanControllerTest {
         verify(loanAppService).borrowBook(org.mockito.ArgumentMatchers.argThat(
             loan -> loan.getUserId().equals("user-1") && loan.getBookId().equals("book-1")
         ));
+    }
+
+    @Test
+    void postBorrowWhenHostUnavailableReturnsServiceUnavailable() throws Exception {
+        when(loanAppService.borrowBook(org.mockito.ArgumentMatchers.any(Loan.class)))
+            .thenThrow(new com.company.library.ports.LibraryHostUnavailableException("Host down"));
+
+        mockMvc.perform(post("/api/loans/borrow")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "userId": "user-1",
+                          "bookId": "book-1"
+                        }
+                        """))
+            .andExpect(status().isServiceUnavailable())
+            .andExpect(jsonPath("$.error").value("HOST_UNAVAILABLE"))
+            .andExpect(jsonPath("$.message").value("Host down"));
     }
 }
