@@ -66,6 +66,37 @@ class LoanControllerTest {
                         """))
             .andExpect(status().isServiceUnavailable())
             .andExpect(jsonPath("$.error").value("HOST_UNAVAILABLE"))
-            .andExpect(jsonPath("$.message").value("Host down"));
+            .andExpect(jsonPath("$.message").value("Host down"))
+            .andExpect(jsonPath("$.correlationId").isNotEmpty());
+    }
+
+    @Test
+    void postBorrowWithMissingUserIdReturnsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/loans/borrow")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "bookId": "book-1"
+                        }
+                        """))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
+            .andExpect(jsonPath("$.message").isNotEmpty())
+            .andExpect(jsonPath("$.correlationId").isNotEmpty());
+    }
+
+    @Test
+    void postBorrowWithMissingBookIdReturnsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/loans/borrow")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "userId": "user-1"
+                        }
+                        """))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
+            .andExpect(jsonPath("$.message").isNotEmpty())
+            .andExpect(jsonPath("$.correlationId").isNotEmpty());
     }
 }

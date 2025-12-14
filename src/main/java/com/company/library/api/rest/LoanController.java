@@ -4,6 +4,7 @@ import com.company.library.api.rest.dto.BorrowBookRequest;
 import com.company.library.api.rest.dto.LoanResponse;
 import com.company.library.application.LoanAppService;
 import com.company.library.mapping.LoanRestMapper;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,7 +26,7 @@ public class LoanController {
 
     @PostMapping("/borrow")
     @ResponseStatus(HttpStatus.OK)
-    public LoanResponse borrow(@RequestBody BorrowBookRequest request) {
+    public LoanResponse borrow(@Valid @RequestBody BorrowBookRequest request) {
         return loanRestMapper.toResponse(
             loanAppService.borrowBook(loanRestMapper.toDomain(request))
         );
