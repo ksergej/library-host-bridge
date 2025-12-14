@@ -6,3 +6,10 @@ mq:
     request-queue: LIB.REQ.TEST
     reply-queue: LIB.REP.TEST
     timeout: 5s
+  connection:
+    host: localhost
+    port: 1414
+    channel: DEV.CHANNEL
+    queue-manager: DEV.QMGR
+    user: devuser
+    password: devpass
