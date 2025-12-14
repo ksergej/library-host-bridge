@@ -11,6 +11,10 @@ import static org.mockito.Mockito.when;
 
 import java.time.Duration;
 import jakarta.jms.BytesMessage;
+import jakarta.jms.MessageProducer;
+import jakarta.jms.Destination;
+import jakarta.jms.Queue;
+import jakarta.jms.Session;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +25,8 @@ import org.springframework.jms.JmsException;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.core.SessionCallback;
 
+import com.company.library.infrastructure.correlation.CorrelationIdService;
+
 @ExtendWith(MockitoExtension.class)
 class CicsMqGatewayTemplateTest {
 
@@ -30,11 +36,14 @@ class CicsMqGatewayTemplateTest {
     @Mock
     private BytesMessage replyMessage;
 
+    @Mock
+    private CorrelationIdService correlationIdService;
+
     private CicsMqGatewayTemplate gateway;
 
     @BeforeEach
     void setUp() {
-        gateway = new CicsMqGatewayTemplate(jmsTemplate);
+        gateway = new CicsMqGatewayTemplate(jmsTemplate, correlationIdService);
     }
 
     @Test
@@ -84,5 +93,31 @@ class CicsMqGatewayTemplateTest {
         assertThrows(HostCommunicationException.class, () ->
             gateway.callHost("req".getBytes(), "REQ", "REP", Duration.ofSeconds(1))
         );
+    }
+
+    @Test
+    void shouldSetCorrelationIdPropertyWhenPresent() throws Exception {
+        byte[] request = "req".getBytes();
+
+        when(jmsTemplate.getReceiveTimeout()).thenReturn(5000L);
+        when(correlationIdService.getCurrentCorrelationId()).thenReturn("corr-123");
+        when(jmsTemplate.execute(any(SessionCallback.class), anyBoolean())).thenAnswer(invocation -> {
+            SessionCallback<?> callback = invocation.getArgument(0);
+            Session session = org.mockito.Mockito.mock(Session.class);
+            Queue destination = org.mockito.Mockito.mock(Queue.class);
+            BytesMessage message = org.mockito.Mockito.mock(BytesMessage.class);
+            MessageProducer producer = org.mockito.Mockito.mock(MessageProducer.class);
+            org.mockito.Mockito.when(session.createQueue("REQ.QUEUE")).thenReturn(destination);
+            org.mockito.Mockito.when(session.createBytesMessage()).thenReturn(message);
+            org.mockito.Mockito.when(session.createProducer(destination)).thenReturn(producer);
+            callback.doInJms(session);
+            org.mockito.Mockito.verify(message).setStringProperty("CorrelationId", "corr-123");
+            return "ID:123";
+        });
+        when(jmsTemplate.receiveSelected(anyString(), anyString())).thenReturn(replyMessage);
+        when(replyMessage.getBodyLength()).thenReturn(0L);
+        when(replyMessage.readBytes(any(byte[].class))).thenReturn(0);
+
+        gateway.callHost(request, "REQ.QUEUE", "REP.QUEUE", Duration.ofSeconds(1));
     }
 }

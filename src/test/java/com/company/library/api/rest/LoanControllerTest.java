@@ -18,7 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = LoanController.class)
-@Import({LoanRestMapperImpl.class, GlobalExceptionHandler.class})
+@Import({LoanRestMapperImpl.class, GlobalExceptionHandler.class, com.company.library.infrastructure.correlation.CorrelationIdService.class})
 class LoanControllerTest {
 
     @Autowired

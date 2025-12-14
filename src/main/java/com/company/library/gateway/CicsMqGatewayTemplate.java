@@ -8,11 +8,14 @@ import jakarta.jms.JMSException;
 import jakarta.jms.Message;
 import jakarta.jms.MessageProducer;
 import jakarta.jms.Session;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jms.JmsException;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.core.SessionCallback;
 import org.springframework.stereotype.Component;
+
+import com.company.library.infrastructure.correlation.CorrelationIdService;
 
 /**
  * MQ gateway encapsulating request/reply pattern with CorrelationId = MsgId.
@@ -20,10 +23,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class CicsMqGatewayTemplate {
 
-    private final JmsTemplate jmsTemplate;
+    private static final Logger log = LoggerFactory.getLogger(CicsMqGatewayTemplate.class);
 
-    public CicsMqGatewayTemplate(JmsTemplate jmsTemplate) {
+    private final JmsTemplate jmsTemplate;
+    private final CorrelationIdService correlationIdService;
+
+    public CicsMqGatewayTemplate(JmsTemplate jmsTemplate, CorrelationIdService correlationIdService) {
         this.jmsTemplate = jmsTemplate;
+        this.correlationIdService = correlationIdService;
     }
 
     /**
@@ -73,8 +80,16 @@ public class CicsMqGatewayTemplate {
                 BytesMessage message = session.createBytesMessage();
                 message.writeBytes(requestPayload);
 
+                String correlationId = correlationIdService.getCurrentCorrelationId();
+                if (correlationId != null && !correlationId.isBlank()) {
+                    message.setStringProperty("CorrelationId", correlationId);
+                }
+
                 MessageProducer producer = session.createProducer(destination);
                 producer.send(message);
+                if (log.isDebugEnabled()) {
+                    log.debug("Sent MQ request to {} with correlation property {}", requestQueue, correlationId);
+                }
                 return message.getJMSMessageID();
             }
         }, true);
