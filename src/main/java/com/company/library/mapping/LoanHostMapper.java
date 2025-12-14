@@ -12,6 +12,7 @@ public interface LoanHostMapper {
 
     @Mapping(target = "user.id", source = "userId")
     @Mapping(target = "book.id", source = "bookId")
+    @Mapping(target = "requestedDueDate", ignore = true)
     HostBorrowRequest toHostRequest(Loan loan);
 
     @Mapping(target = "id", source = "loan.loanId")
