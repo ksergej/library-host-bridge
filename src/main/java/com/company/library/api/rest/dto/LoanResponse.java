@@ -1,4 +1,10 @@
 package com.company.library.api.rest.dto;
 
-public record LoanResponse(String id, String userId, String bookId) {
+import io.swagger.v3.oas.annotations.media.Schema;
+
+public record LoanResponse(
+    @Schema(description = "Loan identifier") String id,
+    @Schema(description = "User identifier") String userId,
+    @Schema(description = "Book identifier") String bookId
+) {
 }

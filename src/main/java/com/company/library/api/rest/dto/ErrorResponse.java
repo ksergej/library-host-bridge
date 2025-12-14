@@ -1,4 +1,10 @@
 package com.company.library.api.rest.dto;
 
-public record ErrorResponse(String error, String message, String correlationId) {
+import io.swagger.v3.oas.annotations.media.Schema;
+
+public record ErrorResponse(
+    @Schema(description = "Error code") String error,
+    @Schema(description = "Human-readable error message") String message,
+    @Schema(description = "Correlation id for tracing, if available") String correlationId
+) {
 }
