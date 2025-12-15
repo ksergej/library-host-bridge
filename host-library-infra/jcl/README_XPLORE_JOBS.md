@@ -20,3 +20,4 @@ Run order (expected RC=0):
 Notes:
 - SQL sources reside under `host-library-infra/db2/` — copy/paste into SYSIN or upload to a dataset before running the JCL.
 - MQ and DB2 LOADLIB names vary on Xplore; verify with the environment docs and update the placeholders.
+- `LIBMQTST` now expects structured borrow payload (HOST-BORROW-REQUEST), checks DB2 LOAN for active loans, inserts a new loan when available, and returns HOST-BORROW-RESPONSE with `STATUS-CODE` (`OK`/`BUSY`/`ERR`) and `MESSAGE`.
