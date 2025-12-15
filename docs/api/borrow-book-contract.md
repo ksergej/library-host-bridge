@@ -107,3 +107,7 @@ Note: Other unexpected errors may be mapped to 500 in the future if needed (not 
 - Idempotency: not strictly defined at this time.
 - Correlation: `X-Correlation-Id` is propagated and returned for tracing; also forwarded internally to MQ as a JMS property.
 - Frontend only needs to follow this REST contract; host-side MQ/COBOL details are internal.
+
+## See also
+- `docs/api/borrow-book-curl-examples.md` — ready-to-copy curl calls.
+- `docs/frontend/borrowBookClient.ts` — minimal JS/TS fetch client example.
