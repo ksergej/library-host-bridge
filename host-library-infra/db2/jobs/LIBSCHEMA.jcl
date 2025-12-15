@@ -1,6 +1,12 @@
 //LIBSCHEMA JOB (ACCT),'CREATE LIB SCHEMA',
 //         CLASS=A,MSGCLASS=X,NOTIFY=&SYSUID
-//*  Creates LIBRARY schema and tables using DSNTEP2
+//*-------------------------------------------------------------*
+//* IBM Z Xplore placeholder job to create LIBRARY schema via   *
+//* DSNTEP2. Replace placeholders:                              *
+//*   - &DB2LOAD : DB2 SDSNLOAD (e.g. SDSN.SDSNLOAD)            *
+//*   - SYSIN    : source SQL (from host-library-infra/db2/schema.sql) *
+//*-------------------------------------------------------------*
+//SET DB2LOAD=SDSN.SDSNLOAD
 //STEP1   EXEC PGM=IKJEFT01,REGION=0M
 //SYSTSPRT DD SYSOUT=*
 //SYSPRINT DD SYSOUT=*
@@ -8,9 +14,9 @@
 //SYSTSIN  DD *
   DSN SYSTEM(DB2A)
   RUN PROGRAM(DSNTEP2) PLAN(DSNTEP2) -
-      LIB('DB2A.DSNLOAD')
+      LIB('&DB2LOAD')
   END
-/*
+/* 
 //SYSIN    DD *
--- Paste contents of db2/schema.sql here or point SYSIN to a dataset
+-- Paste contents of host-library-infra/db2/schema.sql here or point SYSIN to a dataset
 /*
