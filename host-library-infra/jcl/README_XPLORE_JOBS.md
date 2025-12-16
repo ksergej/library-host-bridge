@@ -21,4 +21,5 @@ Notes:
 - SQL sources reside under `host-library-infra/db2/` — copy/paste into SYSIN or upload to a dataset before running the JCL.
 - MQ and DB2 LOADLIB names vary on Xplore; verify with the environment docs and update the placeholders.
 - `LIBMQTST` now expects structured borrow payload (HOST-BORROW-REQUEST), checks DB2 LOAN for active loans, inserts a new loan when available, and returns HOST-BORROW-RESPONSE with `STATUS-CODE` (`OK`/`BUSY`/`ERR`) and `MESSAGE`.
+- LIBMQTST now transforms MQ XML ↔ copybook internally (XML per `library-loan.xsd`; copybook in `LIBLOAN.cpy`), keeps CorrelId=MsgId in MQMD.
 - LOAN_ID_NUM is a DB2 identity; COBOL derives external loan id as `L` + zero-padded number (CHAR(10)) and returns it in the reply (LOAN_ID not stored; see view V_LOAN for debugging). CorrelationId remains in MQMD (CorrelId = MsgId).
