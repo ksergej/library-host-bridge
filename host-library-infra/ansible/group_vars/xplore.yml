@@ -1,0 +1,38 @@
+hlq: "Z86422"  # placeholder HLQ
+
+ansible_connection: ssh
+ansible_user: "ZUSER"            # replace with your user
+ansible_port: 22
+ansible_ssh_private_key_file: "~/.ssh/id_ed25519"
+ansible_ssh_common_args: "-o StrictHostKeyChecking=accept-new"
+
+# z/OS USS Python (IBM Open Enterprise Python)
+PYZ: "/usr/lpp/IBM/cyp/v3r9/pyz"
+ZOAU: "/usr/lpp/IBM/zoautil"
+ansible_python_interpreter: "{{ PYZ }}/bin/python3"
+
+environment_vars:
+  _BPXK_AUTOCVT: "ON"
+  ZOAU_HOME: "{{ ZOAU }}"
+  ZOAU_ROOT: "{{ ZOAU }}"
+  PYTHONSTDINENCODING: "cp1047"
+  LIBPATH: "{{ ZOAU }}/lib:{{ PYZ }}/lib:/lib:/usr/lib"
+  PATH: "{{ ZOAU }}/bin:{{ PYZ }}/bin:/bin:/usr/bin"
+  _CEE_RUNOPTS: "FILETAG(AUTOCVT,AUTOTAG) POSIX(ON)"
+  _TAG_REDIR_ERR: "txt"
+  _TAG_REDIR_IN: "txt"
+  _TAG_REDIR_OUT: "txt"
+  LANG: "C"
+  LC_ALL: "C"
+
+db2:
+  subsystem: "DBDG"              # placeholder subsystem (e.g. DBC1/DSN1)
+  plan: "LIBPLAN"                # placeholder plan if bind/run uses it
+  qualifier: "Z86422"           # schema qualifier
+  loadlib: "SND10.SDSNLOAD"       # placeholder SDSNLOAD
+  exitlib: "SND10.SDSNEXIT.NEW"       # optional placeholder SDSNEXIT
+  runlib: "SDSN.SDSNRUN"         # optional placeholder SDSNRUN
+  dbrmlib: "{{ hlq }}.DBRMLIB"   # DBRM PDS/PDSE
+
+mq:
+  loadlib: "CSQ900.SCSQLOAD"     # placeholder MQ loadlib

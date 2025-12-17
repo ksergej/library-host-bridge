@@ -1,0 +1,23 @@
+//LIBSCHEMA JOB (ACCT),'DB2 SCHEMA',
+//         CLASS=A,MSGCLASS=X,NOTIFY=&SYSUID
+//*-------------------------------------------------------------*
+//*  Apply schema.sql via DSNTEP2
+//*  Tokens: HLQ, DB2LOAD, DB2SS
+//*-------------------------------------------------------------*
+//SET HLQ={{ hlq }}
+//SET DB2LOAD={{ db2.loadlib }}
+//SET DB2SS={{ db2.subsystem }}
+//SET SQLPDS=&HLQ..SQL
+//*
+//STEP1   EXEC PGM=IKJEFT01,DYNAMNBR=20
+//STEPLIB DD  DSN=&DB2LOAD,DISP=SHR
+//SYSTSPRT DD SYSOUT=*
+//SYSOUT  DD SYSOUT=*
+//SYSTSIN DD *
+  DSN SYSTEM(&DB2SS)
+  RUN PROGRAM(DSNTEP2) PLAN(DSNTEP2) -
+      LIB('&DB2LOAD') PARMS('SQL')
+  END
+/*
+//SYSIN   DD DISP=SHR,DSN=&SQLPDS(SCHEMA)
+//*

@@ -9,6 +9,8 @@
     cobol_pds: "{{ hlq }}.COBOL"
     jcl_pds:   "{{ hlq }}.JCL"
     load_pds:  "{{ hlq }}.LOAD"
+    dbrm_pds:  "{{ hlq }}.DBRMLIB"
+    sql_pds:   "{{ hlq }}.SQL"
 
   environment: "{{ environment_vars }}"
 
@@ -49,6 +51,28 @@
         space_secondary: 5
         space_type: CYL
 
+    - name: Create DBRM PDS
+      zos_data_set:
+        name: "{{ dbrm_pds }}"
+        type: PDS
+        state: present
+        record_length: 80
+        block_size: 0
+        space_primary: 5
+        space_secondary: 5
+        space_type: CYL
+
+    - name: Create SQL PDS
+      zos_data_set:
+        name: "{{ sql_pds }}"
+        type: PDS
+        state: present
+        record_length: 80
+        block_size: 0
+        space_primary: 5
+        space_secondary: 5
+        space_type: CYL
+
     - name: Upload COBOL program LIBMQTST
       zos_copy:
         src: "../../cobol/LIBMQTST.cbl"
@@ -57,18 +81,62 @@
           from: ISO8859-1
           to: IBM-1047
 
+    - name: Upload COBOL copybook LIBLOAN
+      zos_copy:
+        src: "../../cobol/LIBLOAN.cpy"
+        dest: "{{ cobol_pds }}(LIBLOAN)"
+        encoding:
+          from: ISO8859-1
+          to: IBM-1047
+
     - name: Upload compile JCL LIBMQTSTC
       zos_copy:
-        src: "../../jcl/LIBMQTSTC.jcl"
+        src: "../templates/jcl/LIBMQTSTC.jcl.j2"
         dest: "{{ jcl_pds }}(LIBMQC)"
+        use_template: true
         encoding:
           from: ISO8859-1
           to: IBM-1047
 
     - name: Upload run JCL LIBMQTST
       zos_copy:
-        src: "../../jcl/LIBMQTST.jcl"
+        src: "../templates/jcl/LIBMQTST.jcl.j2"
         dest: "{{ jcl_pds }}(LIBMQRUN)"
+        use_template: true
+        encoding:
+          from: ISO8859-1
+          to: IBM-1047
+
+    - name: Upload DB2 schema JCL
+      zos_copy:
+        src: "../templates/jcl/LIBSCHEMA.jcl.j2"
+        dest: "{{ jcl_pds }}(LIBSCHEMA)"
+        use_template: true
+        encoding:
+          from: ISO8859-1
+          to: IBM-1047
+
+    - name: Upload DB2 data JCL
+      zos_copy:
+        src: "../templates/jcl/LIBDATA.jcl.j2"
+        dest: "{{ jcl_pds }}(LIBDATA)"
+        use_template: true
+        encoding:
+          from: ISO8859-1
+          to: IBM-1047
+
+    - name: Upload SQL schema member
+      zos_copy:
+        src: "../../db2/schema.sql"
+        dest: "{{ sql_pds }}(SCHEMA)"
+        encoding:
+          from: ISO8859-1
+          to: IBM-1047
+
+    - name: Upload SQL data member
+      zos_copy:
+        src: "../../db2/testdata.sql"
+        dest: "{{ sql_pds }}(TESTDATA)"
         encoding:
           from: ISO8859-1
           to: IBM-1047
@@ -91,14 +159,3 @@
 
     - debug:
         msg: "Compile RC={{ compile_job.jobs[0].ret_code.msg }}"
-
-    - name: Submit run job LIBMQRUN
-      zos_job_submit:
-        src: "{{ jcl_pds }}(LIBMQRUN)"
-        location: DATA_SET
-        wait: true
-        max_rc: 8
-      register: run_job
-
-    - debug:
-        msg: "Run RC={{ run_job.jobs[0].ret_code.msg }}"

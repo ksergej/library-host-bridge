@@ -1,10 +1,11 @@
 ---
-- name: Smoke test z/OS connectivity
+- name: Host smoke pipeline (deploy → schema → data → compile → run)
   hosts: zos_xplore
   gather_facts: no
 
   vars:
-    ansible_connection: ssh
+    jcl_pds: "{{ hlq }}.JCL"
+    max_rc_run: 8
 
   environment: "{{ environment_vars }}"
 
@@ -12,20 +13,25 @@
     - ibm.ibm_zos_core
 
   tasks:
-    - name: Ping host
-      ansible.builtin.ping:
+    - name: Deploy datasets, sources, JCL, SQL
+      import_playbook: library_deploy.yml
 
-    - name: Show Python version on z/OS
-      ansible.builtin.command: "{{ PYZ }}/bin/python3 --version"
-      register: pyver
+    - name: Apply DB2 schema
+      import_playbook: db2_schema.yml
+
+    - name: Apply DB2 data
+      import_playbook: db2_data.yml
+
+    - name: Compile host program
+      import_playbook: compile_host.yml
+
+    - name: Submit run job LIBMQRUN
+      zos_job_submit:
+        src: "{{ jcl_pds }}(LIBMQRUN)"
+        location: DATA_SET
+        wait: true
+      register: run_job
+      failed_when: run_job.jobs[0].ret_code.code|int > max_rc_run
 
     - debug:
-        var: pyver.stdout
-
-    - name: Check import zoautil_py
-      ansible.builtin.command: >
-        {{ PYZ }}/bin/python3 -c "import zoautil_py; print('ZOAU OK')"
-      register: zoauchk
-
-    - debug:
-        var: zoauchk.stdout
+        msg: "Run RC={{ run_job.jobs[0].ret_code.msg }}"

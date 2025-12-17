@@ -1,0 +1,18 @@
+//LIBMQRUN JOB (ACCT),'RUN LIBMQTST',
+//         CLASS=A,MSGCLASS=X,NOTIFY=&SYSUID
+//*-------------------------------------------------------------*
+//*  Run MQ+DB2 test LIBMQTST (XML -> copybook -> DB2)
+//*  Tokens replaced by Ansible:
+//*    HLQ, COBLOAD, MQLOAD, DB2LOAD
+//*-------------------------------------------------------------*
+//SET HLQ={{ hlq }}
+//SET COBLOAD=&HLQ..LOAD
+//SET MQLOAD={{ mq.loadlib }}
+//SET DB2LOAD={{ db2.loadlib }}
+//*
+//RUN     EXEC PGM=LIBMQTST,REGION=0M
+//STEPLIB DD  DSN=&COBLOAD,DISP=SHR
+//        DD  DSN=&MQLOAD,DISP=SHR
+//        DD  DSN=&DB2LOAD,DISP=SHR
+//SYSOUT  DD  SYSOUT=*
+//*

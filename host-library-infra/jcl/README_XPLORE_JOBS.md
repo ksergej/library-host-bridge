@@ -10,6 +10,8 @@ Placeholders / symbols:
 - `&COBLOAD` — COBOL loadlib containing `LIBMQTST` (e.g. `&HLQ..LIB.LOAD`).
 - `&MQLOAD` — IBM MQ loadlib (e.g. `CSQxxx.SCSQLOAD`).
 - `&DB2LOAD` — DB2 SDSNLOAD (e.g. `SDSN.SDSNLOAD`).
+- `&DB2SS` — DB2 subsystem (e.g. `DBC1`).
+- `&DBRMLIB` — DBRM PDS/PDSE (e.g. `&HLQ..DBRM`).
 - Replace these with actual dataset names in your Xplore environment. Credentials/DSNs must be provided manually (not stored in repo).
 
 Run order (expected RC=0):
@@ -18,7 +20,8 @@ Run order (expected RC=0):
 3) `LIBMQTST.jcl` (verifies MQ path)
 
 Notes:
-- SQL sources reside under `host-library-infra/db2/` — copy/paste into SYSIN or upload to a dataset before running the JCL.
+- SQL sources reside under `host-library-infra/db2/` — copy/paste into SYSIN or upload to a dataset before running the JCL (Ansible playbooks place them into {{ hlq }}.SQL members).
+- Ansible smoke pipeline: `ansible-playbook -i inventories/xplore/hosts.ini playbooks/smoke.yml` (deploy → schema → data → compile → run). Ensure vars (HLQ, DB2LOAD, MQLOAD, DB2SS, DBRMLIB) are set in `group_vars/xplore.yml`.
 - MQ and DB2 LOADLIB names vary on Xplore; verify with the environment docs and update the placeholders.
 - `LIBMQTST` now expects structured borrow payload (HOST-BORROW-REQUEST), checks DB2 LOAN for active loans, inserts a new loan when available, and returns HOST-BORROW-RESPONSE with `STATUS-CODE` (`OK`/`BUSY`/`ERR`) and `MESSAGE`.
 - LIBMQTST now transforms MQ XML ↔ copybook internally (XML per `library-loan.xsd`; copybook in `LIBLOAN.cpy`), keeps CorrelId=MsgId in MQMD.

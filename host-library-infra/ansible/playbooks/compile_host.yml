@@ -1,0 +1,25 @@
+---
+- name: Compile (and optionally bind) LIBMQTST
+  hosts: zos_xplore
+  gather_facts: no
+
+  vars:
+    jcl_pds: "{{ hlq }}.JCL"
+    max_rc: 8
+
+  environment: "{{ environment_vars }}"
+
+  collections:
+    - ibm.ibm_zos_core
+
+  tasks:
+    - name: Submit compile job LIBMQC
+      zos_job_submit:
+        src: "{{ jcl_pds }}(LIBMQC)"
+        location: DATA_SET
+        wait: true
+      register: compile_job
+      failed_when: compile_job.jobs[0].ret_code.code|int > max_rc
+
+    - debug:
+        msg: "Compile RC={{ compile_job.jobs[0].ret_code.msg }}"

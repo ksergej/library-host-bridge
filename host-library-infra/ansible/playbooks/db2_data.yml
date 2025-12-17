@@ -1,0 +1,25 @@
+---
+- name: Apply DB2 test data (LIBDATA)
+  hosts: zos_xplore
+  gather_facts: no
+
+  vars:
+    jcl_pds: "{{ hlq }}.JCL"
+    max_rc: 0
+
+  environment: "{{ environment_vars }}"
+
+  collections:
+    - ibm.ibm_zos_core
+
+  tasks:
+    - name: Submit data job LIBDATA
+      zos_job_submit:
+        src: "{{ jcl_pds }}(LIBDATA)"
+        location: DATA_SET
+        wait: true
+      register: data_job
+      failed_when: data_job.jobs[0].ret_code.code|int > max_rc
+
+    - debug:
+        msg: "Data RC={{ data_job.jobs[0].ret_code.msg }}"
