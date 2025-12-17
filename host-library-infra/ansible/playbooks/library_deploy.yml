@@ -18,60 +18,67 @@
     - ibm.ibm_zos_core
 
   tasks:
+    - name: Preflight | verify zoautil_py available
+      ansible.builtin.command: "{{ ansible_python_interpreter }} -c \"import zoautil_py; print('ZOAU OK')\""
+      register: zoau_check
+      changed_when: false
+      failed_when: zoau_check.rc != 0
+      environment: "{{ environment_vars }}"
+
     - name: Create COBOL PDS
       zos_data_set:
         name: "{{ cobol_pds }}"
-        type: PDS
+        type: pds
         state: present
         record_length: 80
         block_size: 0
         space_primary: 5
         space_secondary: 5
-        space_type: CYL
+        space_type: cyl
 
     - name: Create JCL PDS
       zos_data_set:
         name: "{{ jcl_pds }}"
-        type: PDS
+        type: pds
         state: present
         record_length: 80
         block_size: 0
         space_primary: 5
         space_secondary: 5
-        space_type: CYL
+        space_type: cyl
 
     - name: Create LOAD PDSE
       zos_data_set:
         name: "{{ load_pds }}"
-        type: PDSE
+        type: pdse
         state: present
         record_length: 0
         block_size: 0
         space_primary: 10
         space_secondary: 5
-        space_type: CYL
+        space_type: cyl
 
     - name: Create DBRM PDS
       zos_data_set:
         name: "{{ dbrm_pds }}"
-        type: PDS
+        type: pds
         state: present
         record_length: 80
         block_size: 0
         space_primary: 5
         space_secondary: 5
-        space_type: CYL
+        space_type: cyl
 
     - name: Create SQL PDS
       zos_data_set:
         name: "{{ sql_pds }}"
-        type: PDS
+        type: pds
         state: present
         record_length: 80
         block_size: 0
         space_primary: 5
         space_secondary: 5
-        space_type: CYL
+        space_type: cyl
 
     - name: Upload COBOL program LIBMQTST
       zos_copy:

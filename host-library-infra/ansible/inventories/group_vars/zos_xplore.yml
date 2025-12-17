@@ -1,7 +1,7 @@
 hlq: "Z86422"  # placeholder HLQ
 
 ansible_connection: ssh
-ansible_user: "ZUSER"            # replace with your user
+ansible_user: "Z86422"            # replace with your user
 ansible_port: 22
 ansible_ssh_private_key_file: "~/.ssh/id_ed25519"
 ansible_ssh_common_args: "-o StrictHostKeyChecking=accept-new"
@@ -17,6 +17,7 @@ environment_vars:
   ZOAU_ROOT: "{{ ZOAU }}"
   PYTHONSTDINENCODING: "cp1047"
   LIBPATH: "{{ ZOAU }}/lib:{{ PYZ }}/lib:/lib:/usr/lib"
+  PYTHONPATH: "{{ ZOAU }}/lib"
   PATH: "{{ ZOAU }}/bin:{{ PYZ }}/bin:/bin:/usr/bin"
   _CEE_RUNOPTS: "FILETAG(AUTOCVT,AUTOTAG) POSIX(ON)"
   _TAG_REDIR_ERR: "txt"
