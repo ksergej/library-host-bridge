@@ -16,7 +16,7 @@
     - name: Submit compile job LIBMQC
       zos_job_submit:
         src: "{{ jcl_pds }}(LIBMQC)"
-        location: DATA_SET
+        location: data_set
         wait: true
       register: compile_job
       failed_when: compile_job.jobs[0].ret_code.code|int > max_rc

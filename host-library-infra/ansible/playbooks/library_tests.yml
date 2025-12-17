@@ -15,7 +15,7 @@
     - name: Submit LIBTEST1 job
       zos_job_submit:
         src: "{{ hlq }}.JCL(LIBTEST1)"
-        location: DATA_SET
+        location: data_set
         wait: true
         max_rc: 8
       register: test_job

@@ -169,7 +169,7 @@
     - name: Submit compile job LIBMQC
       zos_job_submit:
         src: "{{ jcl_pds }}(LIBMQC)"
-        location: DATA_SET
+        location: data_set
         wait: true
         max_rc: 8
       register: compile_job

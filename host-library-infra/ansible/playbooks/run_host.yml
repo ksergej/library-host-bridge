@@ -16,7 +16,7 @@
     - name: Submit run job LIBMQRUN
       zos_job_submit:
         src: "{{ jcl_pds }}(LIBMQRUN)"
-        location: DATA_SET
+        location: data_set
         wait: true
         max_rc: "{{ max_rc_run }}"
       register: run_job
