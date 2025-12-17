@@ -85,6 +85,7 @@
       zos_copy:
         src: "{{ playbook_dir }}/../../cobol/LIBMQTST.cbl"
         dest: "{{ cobol_pds }}(LIBMQTST)"
+        force: true
         encoding:
           from: ISO8859-1
           to: IBM-1047
@@ -93,6 +94,7 @@
       zos_copy:
         src: "{{ playbook_dir }}/../../cobol/LIBLOAN.cpy"
         dest: "{{ cobol_pds }}(LIBLOAN)"
+        force: true
         encoding:
           from: ISO8859-1
           to: IBM-1047
@@ -102,6 +104,7 @@
         src: "{{ playbook_dir }}/../templates/jcl/LIBMQTSTC.jcl.j2"
         dest: "{{ jcl_pds }}(LIBMQC)"
         use_template: true
+        force: true
         encoding:
           from: ISO8859-1
           to: IBM-1047
@@ -111,6 +114,7 @@
         src: "{{ playbook_dir }}/../templates/jcl/LIBMQTST.jcl.j2"
         dest: "{{ jcl_pds }}(LIBMQRUN)"
         use_template: true
+        force: true
         encoding:
           from: ISO8859-1
           to: IBM-1047
@@ -118,8 +122,9 @@
     - name: Upload DB2 schema JCL
       zos_copy:
         src: "{{ playbook_dir }}/../templates/jcl/LIBSCHEMA.jcl.j2"
-        dest: "{{ jcl_pds }}(LIBSCHEMA)"
+        dest: "{{ jcl_pds }}(LIBSCHEM)"
         use_template: true
+        force: true
         encoding:
           from: ISO8859-1
           to: IBM-1047
@@ -129,6 +134,7 @@
         src: "{{ playbook_dir }}/../templates/jcl/LIBDATA.jcl.j2"
         dest: "{{ jcl_pds }}(LIBDATA)"
         use_template: true
+        force: true
         encoding:
           from: ISO8859-1
           to: IBM-1047
@@ -137,6 +143,7 @@
       zos_copy:
         src: "{{ playbook_dir }}/../../db2/schema.sql"
         dest: "{{ sql_pds }}(SCHEMA)"
+        force: true
         encoding:
           from: ISO8859-1
           to: IBM-1047
@@ -145,17 +152,19 @@
       zos_copy:
         src: "{{ playbook_dir }}/../../db2/testdata.sql"
         dest: "{{ sql_pds }}(TESTDATA)"
+        force: true
         encoding:
           from: ISO8859-1
           to: IBM-1047
 
-    - name: Upload test JCL LIBTEST01
-      zos_copy:
-        src: "{{ playbook_dir }}/../../jcl/test/LIBTEST01.jcl"
-        dest: "{{ jcl_pds }}(LIBTEST1)"
-        encoding:
-          from: ISO8859-1
-          to: IBM-1047
+#    - name: Upload test JCL LIBTEST01
+#      zos_copy:
+#        src: "{{ playbook_dir }}/../../jcl/test/LIBTEST01.jcl"
+#        dest: "{{ jcl_pds }}(LIBTEST1)"
+#        force: true
+#        encoding:
+#          from: ISO8859-1
+#          to: IBM-1047
 
     - name: Submit compile job LIBMQC
       zos_job_submit:

@@ -2,9 +2,9 @@
 //         CLASS=A,MSGCLASS=X,NOTIFY=&SYSUID
 //*-------------------------------------------------------------*
 //* IBM Z Xplore placeholder job to load test data via DSNTEP2. *
-//* Replace placeholders:                                      *
+//* Replace placeholders:                                       *
 //*   - &DB2LOAD : DB2 SDSNLOAD (e.g. SDSN.SDSNLOAD)            *
-//*   - SYSIN    : source SQL (from host-library-infra/db2/testdata.sql) *
+//*   - SYSIN    : source SQL (from       .../db2/testdata.sql) *
 //*-------------------------------------------------------------*
 //SET DB2LOAD=SDSN.SDSNLOAD
 //STEP1   EXEC PGM=IKJEFT01,REGION=0M

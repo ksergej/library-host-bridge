@@ -15,7 +15,7 @@ Placeholders / symbols:
 - Replace these with actual dataset names in your Xplore environment. Credentials/DSNs must be provided manually (not stored in repo).
 
 Run order (expected RC=0):
-1) `LIBSCHEMA.jcl`
+1) `LIBSCHEM` member (schema)
 2) `LIBDATA.jcl`
 3) `LIBMQTST.jcl` (verifies MQ path)
 

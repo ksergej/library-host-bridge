@@ -15,7 +15,7 @@
   tasks:
     - name: Submit schema job LIBSCHEMA
       zos_job_submit:
-        src: "{{ jcl_pds }}(LIBSCHEMA)"
+        src: "{{ jcl_pds }}(LIBSCHEM)"
         location: DATA_SET
         wait: true
       register: schema_job
