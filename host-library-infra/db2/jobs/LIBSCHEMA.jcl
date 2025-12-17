@@ -17,6 +17,5 @@
       LIB('&DB2LOAD')
   END
 /* 
-//SYSIN    DD *
--- Paste contents of host-library-infra/db2/schema.sql here or point SYSIN to a dataset
+//SYSIN    DD DSN=&SYSUID..SQL(SCHEMA),DISP=SHR
 /*
