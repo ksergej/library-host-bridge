@@ -16,7 +16,8 @@
       zos_job_submit:
         src: "{{ hlq }}.JCL(LIBTEST1)"
         location: data_set
-        wait: true
+        wait_time_s: 300
+        return_output: true
         max_rc: 8
       register: test_job
 

@@ -17,7 +17,8 @@
       zos_job_submit:
         src: "{{ jcl_pds }}(LIBMQRUN)"
         location: data_set
-        wait: true
+        wait_time_s: 300
+        return_output: true
         max_rc: "{{ max_rc_run }}"
       register: run_job
 

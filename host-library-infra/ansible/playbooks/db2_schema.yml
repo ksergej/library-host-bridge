@@ -17,7 +17,8 @@
       zos_job_submit:
         src: "{{ jcl_pds }}(LIBSCHEM)"
         location: data_set
-        wait: true
+        wait_time_s: 300
+        return_output: true
       register: schema_job
       failed_when: schema_job.jobs[0].ret_code.code|int > max_rc
 
