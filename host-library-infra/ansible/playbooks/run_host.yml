@@ -1,0 +1,26 @@
+---
+- name: Run host job LIBMQRUN
+  hosts: zos_xplore
+  gather_facts: false
+
+  vars:
+    jcl_pds: "{{ hlq }}.JCL"
+    max_rc_run: 0
+
+  environment: "{{ environment_vars }}"
+
+  collections:
+    - ibm.ibm_zos_core
+
+  tasks:
+    - name: Submit run job LIBMQRUN
+      zos_job_submit:
+        src: "{{ jcl_pds }}(LIBMQRUN)"
+        location: DATA_SET
+        wait: true
+        max_rc: "{{ max_rc_run }}"
+      register: run_job
+
+    - name: Show run RC
+      debug:
+        msg: "Run RC={{ run_job.jobs[0].ret_code.msg }}"
