@@ -5,12 +5,12 @@
 //*  Tokens replaced by Ansible:
 //*    HLQ, COBSRC, LOAD, DB2LOAD, MQLOAD, DBRMLIB
 //*-------------------------------------------------------------*
-//SET HLQ={{ hlq }}
-//SET COBSRC=&HLQ..COBOL
-//SET LOAD=&HLQ..LOAD
-//SET DBRMLIB={{ hlq }}.DBRMLIB
-//SET DB2LOAD={{ db2.loadlib }}
-//SET MQLOAD={{ mq.loadlib }}
+//VARS   SET HLQ={{ hlq }},
+//           COBSRC=&HLQ..CBL,
+//           LOAD=&HLQ..LOAD,
+//           DBRMLIB=&HLQ..DBRMLIB,
+//           DB2LOAD={{ db2.loadlib }},
+//           MQLOAD={{ mq.loadlib }}
 //*-------------------------------------------------------------*
 //PRECOMP EXEC PGM=DSNHPC,REGION=0M,
 //         PARM=('HOST(IBMCOB)','APOST','LINECOUNT(60)')
@@ -25,7 +25,7 @@
 //*
 //COBOL   EXEC PGM=IGYCRCTL,REGION=0M,COND=(0,LT),
 //         PARM='LIB'
-//STEPLIB DD  DSN=YOUR.COBOL.COMPILER.LOADLIB,DISP=SHR
+//STEPLIB DD  DSN={{ cobol_compiler_loadlib }},DISP=SHR
 //SYSIN   DD  DSN=&&COBSRC,DISP=(OLD,DELETE)
 //SYSLIB  DD  DSN=&COBSRC,DISP=SHR
 //SYSPRINT DD SYSOUT=*
