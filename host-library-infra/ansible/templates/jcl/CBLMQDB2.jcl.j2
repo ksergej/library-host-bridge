@@ -1,0 +1,69 @@
+//CBLMQDB2 JOB 1,NOTIFY=&SYSUID,CLASS=A,MSGCLASS=H,TIME=1440
+//********************************************************************
+//* Compile + Link-edit + Bind (DB2) for COBOL MQ program
+//* This is the canonical "compile+link+bind" job used by Ansible.
+//* Variables are injected by Ansible/Jinja2 (no hardcoded DSNs here).
+//********************************************************************
+//********************************************************************
+//*  COMPILE - COBOL + embedded SQL                                  *
+//********************************************************************
+//COBOL    EXEC PGM=IGYCRCTL,REGION=0M,PARM='SQL'
+//STEPLIB  DD  DSN={{ cobol.compiler_loadlib }},DISP=SHR
+//         DD  DSN={{ db2.exitlib }},DISP=SHR
+//         DD  DSN={{ db2.loadlib }},DISP=SHR
+//         DD  DSN={{ le.runlib }},DISP=SHR
+//         DD  DSN={{ le.runlib2 }},DISP=SHR
+//SYSIN    DD  DISP=SHR,DSN={{ cbl_pds }}({{ host_program_member }})
+//DBRMLIB  DD  DISP=SHR,DSN={{ db2.dbrmlib }}({{ host_program_member }})
+//SYSLIB   DD  DSN={{ mq.cobcopylib }},DISP=SHR
+//         DD  DSN={{ cbl_pds }},DISP=SHR
+//SYSPRINT DD  SYSOUT=*
+//SYSLIN   DD  DSN=&&LOADSET,UNIT=SYSALLDA,
+//             DISP=(MOD,PASS),SPACE=(CYL,(1,1))
+//SYSUT1   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT2   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT3   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT4   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT5   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT6   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT7   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT8   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT9   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT10  DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT11  DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT12  DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT13  DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT14  DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT15  DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSMDECK DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//********************************************************************
+//*  LINK-EDIT                                                      *
+//********************************************************************
+//LKED     EXEC PGM=IEWBLINK,COND=(8,LT,COBOL),REGION=0M
+//SYSLIB   DD  DSN={{ le.linklib }},DISP=SHR
+//         DD  DSN={{ db2.loadlib }},DISP=SHR
+//         DD  DSN={{ mq.loadlib }},DISP=SHR
+//SYSPRINT DD  SYSOUT=*
+//SYSUT1   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSLIN   DD  DSN=&&LOADSET,DISP=(OLD,DELETE)
+//         DD  *
+  INCLUDE SYSLIB(CSQBSTUB)
+  ENTRY  {{ host_program_member }}
+  NAME   {{ host_program_member }}(R)
+/*
+//SYSLMOD  DD  DSN={{ load_pds }}({{ host_program_member }}),DISP=SHR
+//********************************************************************
+//*  BIND DB2 PLAN                                                  *
+//********************************************************************
+//BIND     EXEC PGM=IKJEFT01,COND=(8,LT,LKED)
+//STEPLIB  DD  DSN={{ db2.loadlib }},DISP=SHR
+//DBRMLIB  DD  DSN={{ db2.dbrmlib }},DISP=SHR
+//SYSUDUMP DD  DUMMY
+//SYSTSPRT DD  SYSOUT=*
+//SYSPRINT DD  SYSOUT=*
+//SYSTSIN  DD  *,SYMBOLS=EXECSYS
+ DSN SYSTEM({{ db2.subsystem }})
+ BIND PLAN({{ db2.plan }}) PKLIST({{ db2.collection }}.*) -
+      MEMBER({{ host_program_member }}) -
+      ACT(REP) ISO(CS) ENCODING(EBCDIC)
+/*

@@ -6,11 +6,17 @@
   vars:
     ansible_connection: ssh
 
+    host_program_member: "LIBMQTST"
+
     cobol_pds: "{{ hlq }}.CBL"
+    cbl_pds: "{{ cobol_pds }}"
     jcl_pds:   "{{ hlq }}.JCL"
     load_pds:  "{{ hlq }}.LOAD"
-    dbrm_pds:  "{{ hlq }}.DBRMLIB"
+    dbrm_pds:  "{{ db2.dbrmlib }}"
     sql_pds:   "{{ hlq }}.SQL"
+
+    rendered_dir: "{{ playbook_dir }}/../.ansible_tmp/rendered"
+    rendered_cblmqdb2_jcl: "{{ rendered_dir }}/CBLMQDB2.jcl"
 
   environment: "{{ environment_vars }}"
 
@@ -99,11 +105,39 @@
           from: ISO8859-1
           to: IBM-1047
 
-    - name: Upload compile JCL LIBMQTSTC
+    - name: Prepare local rendered JCL directory
+      ansible.builtin.file:
+        path: "{{ rendered_dir }}"
+        state: directory
+      delegate_to: localhost
+      run_once: true
+      vars:
+        ansible_connection: local
+
+    - name: Render canonical compile+link+bind JCL locally (CBLMQDB2)
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../templates/jcl/CBLMQDB2.jcl.j2"
+        dest: "{{ rendered_cblmqdb2_jcl }}"
+      delegate_to: localhost
+      run_once: true
+      vars:
+        ansible_connection: local
+
+    - name: Assert rendered CBLMQDB2 JCL has no unresolved Jinja markers
+      ansible.builtin.command: "grep -n \"{{ jinja_open }}\" \"{{ rendered_cblmqdb2_jcl }}\""
+      register: jinja_marker_check
+      changed_when: false
+      failed_when: jinja_marker_check.rc == 0
+      delegate_to: localhost
+      run_once: true
+      vars:
+        jinja_open: "{{ '{{' }}"
+        ansible_connection: local
+
+    - name: Upload canonical compile+link+bind JCL member CBLMQDB2
       zos_copy:
-        src: "{{ playbook_dir }}/../templates/jcl/LIBMQTSTC.jcl.j2"
-        dest: "{{ jcl_pds }}(LIBMQC)"
-        use_template: true
+        src: "{{ rendered_cblmqdb2_jcl }}"
+        dest: "{{ jcl_pds }}(CBLMQDB2)"
         force: true
         encoding:
           from: ISO8859-1
@@ -165,15 +199,3 @@
 #        encoding:
 #          from: ISO8859-1
 #          to: IBM-1047
-
-    - name: Submit compile job LIBMQC
-      zos_job_submit:
-        src: "{{ jcl_pds }}(LIBMQC)"
-        location: data_set
-        wait_time_s: 300
-        return_output: true
-        max_rc: 8
-      register: compile_job
-
-    - debug:
-        msg: "Compile RC={{ compile_job.jobs[0].ret_code.msg }}"

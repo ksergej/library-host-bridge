@@ -30,11 +30,25 @@ db2:
   subsystem: "DBDG"              # placeholder subsystem (e.g. DBC1/DSN1)
   plan: "LIBPLAN"                # placeholder plan if bind/run uses it
   qualifier: "Z86422"           # schema qualifier
-  loadlib: "SND10.SDSNLOAD"       # placeholder SDSNLOAD
-  exitlib: "SND10.SDSNEXIT.NEW"       # optional placeholder SDSNEXIT
+  loadlib: "DSND10.SDSNLOAD"       # placeholder SDSNLOAD
+  exitlib: "DSND10.DBDG.SDSNEXIT"   # optional placeholder SDSNEXIT
   runlib: "SDSN.SDSNRUN"         # optional placeholder SDSNRUN
   dbrmlib: "{{ hlq }}.DBRMLIB"   # DBRM PDS/PDSE
+  collection: "{{ hlq }}"        # used in BIND PKLIST(&COLL..*)
 
 mq:
-  loadlib: "CSQ900.SCSQLOAD"     # placeholder MQ loadlib
-  cobol_copylib: "CSQ920.SCSQCOBC"  # IBM MQ for z/OS 9.2 COBOL copybooks (CMQ*V)
+  loadlib: "CSQ920.SCSQLOAD"         # placeholder MQ loadlib (SCSQLOAD)
+  cobol_copylib: "CSQ920.SCSQCOBC"   # IBM MQ for z/OS 9.2 COBOL copybooks (CMQ*V)
+  cobcopylib: "CSQ920.SCSQCOBC"      # alias (preferred name in CBLMQDB2 template)
+
+# COBOL compiler + LE runtime libraries (placeholders; adapt to your Xplore env)
+cobol:
+  compiler_loadlib: "IGY640.SIGYCOMP"  # COBOL compiler loadlib (e.g. IGYxxx.SIGYCOMP)
+
+# Backward-compatible alias used by older JCL template(s)
+cobol_compiler_loadlib: "IGY640.SIGYCOMP"
+
+le:
+  runlib: "CEE.SCEERUN"
+  runlib2: "CEE.SCEERUN2"
+  linklib: "CEE.SCEELKED"

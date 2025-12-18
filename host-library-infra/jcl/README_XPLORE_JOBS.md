@@ -17,11 +17,14 @@ Placeholders / symbols:
 Run order (expected RC=0):
 1) `LIBSCHEM` member (schema)
 2) `LIBDATA.jcl`
-3) `LIBMQTST.jcl` (verifies MQ path)
+3) `CBLMQDB2` member (compile + link-edit + DB2 bind for `LIBMQTST`)
+4) `LIBMQRUN` member (runs `LIBMQTST`)
 
 Notes:
 - SQL sources reside under `host-library-infra/db2/` — copy/paste into SYSIN or upload to a dataset before running the JCL (Ansible playbooks place them into {{ hlq }}.SQL members).
-- Ansible smoke pipeline: `ansible-playbook -i inventories/xplore/hosts.ini playbooks/smoke.yml` (deploy → schema → data → compile → run). Ensure vars (HLQ, DB2LOAD, MQLOAD, DB2SS, DBRMLIB) are set in `group_vars/xplore.yml`.
+- Ansible smoke pipeline (from repo root):
+  - `cd host-library-infra/ansible && ansible-playbook -i inventories/hosts.yml playbooks/smoke.yml`
+  Ensure vars (HLQ, DB2LOAD, MQLOAD, DB2SS, DBRMLIB, COBOL compiler/LE libs) are set in `inventories/group_vars/zos_xplore.yml`.
 - MQ and DB2 LOADLIB names vary on Xplore; verify with the environment docs and update the placeholders.
 - `LIBMQTST` now expects structured borrow payload (HOST-BORROW-REQUEST), checks DB2 LOAN for active loans, inserts a new loan when available, and returns HOST-BORROW-RESPONSE with `STATUS-CODE` (`OK`/`BUSY`/`ERR`) and `MESSAGE`.
 - LIBMQTST now transforms MQ XML ↔ copybook internally (XML per `library-loan.xsd`; copybook in `LIBLOAN.cpy`), keeps CorrelId=MsgId in MQMD.

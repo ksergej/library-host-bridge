@@ -5,6 +5,7 @@
 
   vars:
     jcl_pds: "{{ hlq }}.JCL"
+    compile_member: "CBLMQDB2"
     max_rc: 8
 
   environment: "{{ environment_vars }}"
@@ -13,9 +14,9 @@
     - ibm.ibm_zos_core
 
   tasks:
-    - name: Submit compile job LIBMQC
+    - name: Submit compile+link+bind job {{ compile_member }}
       zos_job_submit:
-        src: "{{ jcl_pds }}(LIBMQC)"
+        src: "{{ jcl_pds }}({{ compile_member }})"
         location: data_set
         wait_time_s: 300
         return_output: true
