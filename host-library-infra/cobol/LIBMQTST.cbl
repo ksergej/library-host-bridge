@@ -1,3 +1,4 @@
+CBL NOXREF NOLIST NOSOURCE NOMAP NOOFFSET
        IDENTIFICATION DIVISION.
        PROGRAM-ID. LIBMQTST.
 
@@ -9,12 +10,26 @@
 
        EXEC SQL INCLUDE SQLCA END-EXEC.
 
-       COPY CMQZC.
-       COPY CMQOD.
-       COPY CMQMD.
-       COPY CMQGMO.
-       COPY CMQPMO.
-       COPY LIBLOAN.
+       01  WS-SQLCODE-EDIT      PIC -ZZZ,ZZZ,ZZ9 USAGE DISPLAY.
+
+       01  MQM-CONSTANTS.
+           COPY CMQV.
+
+       01  MQM-OBJECT-DESCRIPTOR.
+           COPY CMQODV.
+
+       01  MQM-MESSAGE-DESCRIPTOR.
+           COPY CMQMDV.
+
+       01  MQM-GET-MESSAGE-OPTIONS.
+           COPY CMQGMOV.
+
+       01  MQM-PUT-MESSAGE-OPTIONS.
+           COPY CMQPMOV.
+
+       01  MQ-QMGR-NAME PIC X(48) VALUE SPACES.
+
+           COPY LIBLOAN.
 
        01  HCONN        PIC S9(9) COMP.
        01  HOBJ-REQ     PIC S9(9) COMP.
@@ -24,6 +39,8 @@
 
        01  REQ-DATA             PIC X(256).
        01  RSP-DATA             PIC X(256).
+       01  REQ-DATA-LEN         PIC S9(9) COMP VALUE 0.
+       01  RSP-DATA-LEN         PIC S9(9) COMP VALUE 0.
 
        01  WS-ACTIVE-COUNT      PIC S9(9) COMP VALUE 0.
        01  WS-LOAN-ID-NUM       PIC S9(9) COMP VALUE 0.
@@ -58,9 +75,9 @@
            END-IF.
 
            MOVE MQOD-VERSION-4 TO MQOD-VERSION.
-           MOVE 'LIB.REQ.TEST' TO MQOD-OBJECT-NAME.
+           MOVE 'LIB.REQ.TEST' TO MQOD-OBJECTNAME.
            CALL 'MQOPEN' USING HCONN
-                               MQOD
+                               MQM-OBJECT-DESCRIPTOR
                                MQOO-INPUT-SHARED
                                HOBJ-REQ
                                COMPCODE
@@ -71,9 +88,9 @@
            END-IF.
 
            MOVE MQOD-VERSION-4 TO MQOD-VERSION.
-           MOVE 'LIB.REP.TEST' TO MQOD-OBJECT-NAME.
+           MOVE 'LIB.REP.TEST' TO MQOD-OBJECTNAME.
            CALL 'MQOPEN' USING HCONN
-                               MQOD
+                               MQM-OBJECT-DESCRIPTOR
                                MQOO-OUTPUT
                                HOBJ-REP
                                COMPCODE
@@ -85,16 +102,18 @@
 
            MOVE MQGMO-VERSION-1      TO MQGMO-VERSION.
            MOVE MQGMO-WAIT           TO MQGMO-OPTIONS.
-           MOVE 30000                TO MQGMO-WAIT-INTERVAL.
+           MOVE 30000                TO MQGMO-WAITINTERVAL.
 
            MOVE MQMD-VERSION-1       TO MQMD-VERSION.
            MOVE MQMT-DATAGRAM        TO MQMD-MSGTYPE.
 
+           COMPUTE REQ-DATA-LEN = FUNCTION LENGTH(REQ-DATA).
+
            CALL 'MQGET' USING HCONN
                              HOBJ-REQ
-                             MQMD
-                             MQGMO
-                             LENGTH OF REQ-DATA
+                             MQM-MESSAGE-DESCRIPTOR
+                             MQM-GET-MESSAGE-OPTIONS
+                             REQ-DATA-LEN
                              REQ-DATA
                              COMPCODE
                              REASON.
@@ -119,11 +138,13 @@
            MOVE MQPMO-VERSION-1 TO MQPMO-VERSION.
            MOVE MQPMO-NO-SYNCPOINT TO MQPMO-OPTIONS.
 
+           COMPUTE RSP-DATA-LEN = FUNCTION LENGTH(RSP-DATA).
+
            CALL 'MQPUT' USING HCONN
                              HOBJ-REP
-                             MQMD
-                             MQPMO
-                             LENGTH OF RSP-DATA
+                             MQM-MESSAGE-DESCRIPTOR
+                             MQM-PUT-MESSAGE-OPTIONS
+                             RSP-DATA-LEN
                              RSP-DATA
                              COMPCODE
                              REASON.
@@ -152,8 +173,6 @@
 
            DISPLAY 'LIBMQTST ENDING'.
            GOBACK.
-
-       END PROGRAM LIBMQTST.
 
       ******************************************************************
       ** Process the request using DB2 and build response
@@ -226,8 +245,10 @@
        SQL-ERROR.
            MOVE 'ERR ' TO HBR-STATUS-CODE.
            MOVE SPACES TO WS-SQL-MSG.
+           MOVE SQLCODE TO WS-SQLCODE-EDIT.
+
            STRING 'SQL ERROR ' DELIMITED BY SIZE
-                  SQLCODE        DELIMITED BY SIZE
+               WS-SQLCODE-EDIT DELIMITED BY SIZE
              INTO WS-SQL-MSG.
            MOVE WS-SQL-MSG TO HBR-MESSAGE.
            EXEC SQL ROLLBACK END-EXEC.

@@ -37,3 +37,4 @@ db2:
 
 mq:
   loadlib: "CSQ900.SCSQLOAD"     # placeholder MQ loadlib
+  cobol_copylib: "CSQ920.SCSQCOBC"  # IBM MQ for z/OS 9.2 COBOL copybooks (CMQ*V)
