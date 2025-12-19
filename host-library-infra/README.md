@@ -18,7 +18,7 @@ jcl/
   test/LIBTEST01.jcl  - Example test job
 
 db2/
-  schema.sql          - LIBRARY.USER/BOOK/LOAN DDL
+  schema.sql          - LIBRARY.USERS/BOOK/LOAN DDL
   testdata.sql        - sample data
   jobs/LIBSCHEMA.jcl  - DSNTEP2 job to create schema
   jobs/LIBDATA.jcl    - DSNTEP2 job to load data
