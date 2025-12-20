@@ -40,9 +40,9 @@ mq:
   loadlib: "CSQ920.SCSQLOAD"         # placeholder MQ loadlib (SCSQLOAD)
   cobol_copylib: "CSQ920.SCSQCOBC"   # IBM MQ for z/OS 9.2 COBOL copybooks (CMQ*V)
   cobcopylib: "CSQ920.SCSQCOBC"      # alias (preferred name in CBLMQDB2 template)
-  qmgr: "MQ1"
-  request_queue: "LIB.REQ.TEST"
-  reply_queue: "LIB.REP.TEST"
+  qmgr: "CSQ9"
+  request_queue: "Z86422.MQZ3.QLOCAL"
+  reply_queue: "Z86422.MQZ3.REPLYTO.QLOCAL"
   wait_ms: 30000
 
 # COBOL compiler + LE runtime libraries (placeholders; adapt to your Xplore env)

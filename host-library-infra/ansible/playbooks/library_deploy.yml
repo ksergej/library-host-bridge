@@ -148,12 +148,13 @@
     - name: Upload run JCL LIBMQTST
       zos_copy:
         src: "{{ playbook_dir }}/../templates/jcl/LIBMQTST.jcl.j2"
-        dest: "{{ jcl_pds }}(LIBMQRUN)"
+        dest: "{{ jcl_pds }}(LIBMQTST)"
         use_template: true
         force: true
         encoding:
           from: ISO8859-1
           to: IBM-1047
+      tags: [jcltst]
 
     - name: Upload DB2 schema JCL
       zos_copy:
