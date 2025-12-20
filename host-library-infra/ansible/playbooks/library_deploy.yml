@@ -96,6 +96,7 @@
         encoding:
           from: ISO8859-1
           to: IBM-1047
+      tags: [cobol, copy, source]
 
     - name: Upload COBOL copybook LIBLOAN
       zos_copy:

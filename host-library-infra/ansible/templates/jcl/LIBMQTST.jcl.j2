@@ -3,7 +3,7 @@
 //*-------------------------------------------------------------*
 //*  Run MQ+DB2 test LIBMQTST (XML -> copybook -> DB2)
 //*  Tokens replaced by Ansible:
-//*    HLQ, COBLOAD, MQLOAD, DB2LOAD
+//*    HLQ, COBLOAD, MQLOAD, DB2LOAD, SYSIN (QMGR/REQ/RPLY/WAIT_MS)
 //*-------------------------------------------------------------*
 //SET HLQ={{ hlq }}
 //SET COBLOAD=&HLQ..LOAD
@@ -15,4 +15,10 @@
 //        DD  DSN=&MQLOAD,DISP=SHR
 //        DD  DSN=&DB2LOAD,DISP=SHR
 //SYSOUT  DD  SYSOUT=*
+//SYSIN   DD  *
+QMGR={{ mq.qmgr }}
+REQ={{ mq.request_queue }}
+RPLY={{ mq.reply_queue }}
+WAIT_MS={{ mq.wait_ms }}
+/*
 //*

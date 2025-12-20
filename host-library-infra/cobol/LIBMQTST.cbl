@@ -1,4 +1,4 @@
-CBL NOXREF NOLIST NOSOURCE NOMAP NOOFFSET
+CBL NOXREF NOMAP NOOFFSET
        IDENTIFICATION DIVISION.
        PROGRAM-ID. LIBMQTST.
 
@@ -27,7 +27,15 @@ CBL NOXREF NOLIST NOSOURCE NOMAP NOOFFSET
        01  MQM-PUT-MESSAGE-OPTIONS.
            COPY CMQPMOV.
 
-       01  MQ-QMGR-NAME PIC X(48) VALUE SPACES.
+       01  WS-QMGR-NAME       PIC X(48) VALUE SPACES.
+       01  WS-REQ-QUEUE       PIC X(48) VALUE SPACES.
+       01  WS-REP-QUEUE       PIC X(48) VALUE SPACES.
+       01  WS-WAIT-MS         PIC S9(9) COMP VALUE 5000.
+       01  WS-SYSIN-LINE      PIC X(256) VALUE SPACES.
+       01  WS-SYSIN-EOF       PIC X VALUE 'N'.
+       01  WS-KEY             PIC X(16).
+       01  WS-VALUE           PIC X(128).
+       01  WS-WAIT-TEXT       PIC X(16) VALUE SPACES.
 
            COPY LIBLOAN.
 
@@ -65,7 +73,17 @@ CBL NOXREF NOLIST NOSOURCE NOMAP NOOFFSET
 
            DISPLAY 'LIBMQTST STARTING'.
 
-           CALL 'MQCONN' USING MQ-QMGR-NAME
+           PERFORM READ-SYSIN-SETTINGS.
+           IF WS-QMGR-NAME = SPACES OR WS-REQ-QUEUE = SPACES
+               DISPLAY 'MISSING SYSIN: QMGR OR REQUEST QUEUE'
+               GOBACK
+           END-IF
+           DISPLAY 'MQ QMGR=' WS-QMGR-NAME
+                   ' REQQ=' WS-REQ-QUEUE
+                   ' RPLYQ=' WS-REP-QUEUE
+                   ' WAIT_MS=' WS-WAIT-MS.
+
+           CALL 'MQCONN' USING WS-QMGR-NAME
                                HCONN
                                COMPCODE
                                REASON.
@@ -75,7 +93,7 @@ CBL NOXREF NOLIST NOSOURCE NOMAP NOOFFSET
            END-IF.
 
            MOVE MQOD-VERSION-4 TO MQOD-VERSION.
-           MOVE 'LIB.REQ.TEST' TO MQOD-OBJECTNAME.
+           MOVE WS-REQ-QUEUE    TO MQOD-OBJECTNAME.
            CALL 'MQOPEN' USING HCONN
                                MQM-OBJECT-DESCRIPTOR
                                MQOO-INPUT-SHARED
@@ -88,7 +106,7 @@ CBL NOXREF NOLIST NOSOURCE NOMAP NOOFFSET
            END-IF.
 
            MOVE MQOD-VERSION-4 TO MQOD-VERSION.
-           MOVE 'LIB.REP.TEST' TO MQOD-OBJECTNAME.
+           MOVE WS-REP-QUEUE    TO MQOD-OBJECTNAME.
            CALL 'MQOPEN' USING HCONN
                                MQM-OBJECT-DESCRIPTOR
                                MQOO-OUTPUT
@@ -102,7 +120,7 @@ CBL NOXREF NOLIST NOSOURCE NOMAP NOOFFSET
 
            MOVE MQGMO-VERSION-1      TO MQGMO-VERSION.
            MOVE MQGMO-WAIT           TO MQGMO-OPTIONS.
-           MOVE 30000                TO MQGMO-WAITINTERVAL.
+           MOVE WS-WAIT-MS           TO MQGMO-WAITINTERVAL.
 
            MOVE MQMD-VERSION-1       TO MQMD-VERSION.
            MOVE MQMT-DATAGRAM        TO MQMD-MSGTYPE.
@@ -229,7 +247,8 @@ CBL NOXREF NOLIST NOSOURCE NOMAP NOOFFSET
                   WS-NEW-LOAN-NUM DELIMITED BY SIZE
              INTO WS-PADDED
            MOVE 'L' TO WS-NEW-LOAN-ID (1:1)
-           MOVE WS-PADDED( LENGTH OF WS-PADDED - 8:9 ) TO WS-NEW-LOAN-ID (2:9)
+           MOVE WS-PADDED( LENGTH OF WS-PADDED - 8:9 )
+             TO WS-NEW-LOAN-ID (2:9)
 
            MOVE WS-NEW-LOAN-ID TO HBR-LOAN-ID
            MOVE 'OK'           TO HBR-STATUS-CODE
@@ -336,8 +355,60 @@ CBL NOXREF NOLIST NOSOURCE NOMAP NOOFFSET
               HBR-MESSAGE            DELIMITED BY SIZE
               '</message>'           DELIMITED BY SIZE
               '</HostBorrowResponse>' DELIMITED BY SIZE
-             INTO WS-XML-RESPONSE
+            INTO WS-XML-RESPONSE
            END-STRING.
            MOVE SPACES TO RSP-DATA.
            MOVE WS-XML-RESPONSE TO RSP-DATA.
            EXIT.
+
+      ******************************************************************
+      ** Read SYSIN control cards (KEY=VALUE)
+      ******************************************************************
+       READ-SYSIN-SETTINGS.
+           MOVE SPACES
+             TO WS-QMGR-NAME WS-REQ-QUEUE WS-REP-QUEUE WS-WAIT-TEXT.
+           MOVE 5000 TO WS-WAIT-MS.
+           MOVE 'N'  TO WS-SYSIN-EOF.
+           PERFORM UNTIL WS-SYSIN-EOF = 'Y'
+              ACCEPT WS-SYSIN-LINE FROM SYSIN
+              IF WS-SYSIN-LINE = SPACES
+                 MOVE 'Y' TO WS-SYSIN-EOF
+                 EXIT PERFORM
+              END-IF
+              PERFORM PARSE-SYSIN-LINE
+           END-PERFORM
+           EXIT.
+
+      ******************************************************************
+      ** Parse one SYSIN line KEY=VALUE (keys: QMGR, REQ, RPLY, WAIT_MS)
+      ******************************************************************
+       PARSE-SYSIN-LINE.
+           MOVE FUNCTION TRIM(WS-SYSIN-LINE) TO WS-SYSIN-LINE.
+           IF WS-SYSIN-LINE = SPACES
+              EXIT
+           END-IF
+           MOVE SPACES TO WS-KEY WS-VALUE.
+           UNSTRING WS-SYSIN-LINE DELIMITED BY '='
+                    INTO WS-KEY WS-VALUE.
+           INSPECT WS-KEY CONVERTING 'abcdefghijklmnopqrstuvwxyz'
+                                TO 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.
+           MOVE FUNCTION TRIM(WS-VALUE) TO WS-VALUE.
+           EVALUATE WS-KEY
+             WHEN 'QMGR'
+                MOVE WS-VALUE TO WS-QMGR-NAME
+             WHEN 'REQ'
+                MOVE WS-VALUE TO WS-REQ-QUEUE
+             WHEN 'RPLY'
+                MOVE WS-VALUE TO WS-REP-QUEUE
+             WHEN 'WAIT_MS'
+                MOVE WS-VALUE TO WS-WAIT-TEXT
+                IF WS-WAIT-TEXT NOT = SPACES
+                   COMPUTE WS-WAIT-MS = FUNCTION NUMVAL(WS-WAIT-TEXT)
+                   ON SIZE ERROR CONTINUE
+                END-IF
+             WHEN OTHER
+                DISPLAY 'UNKNOWN SYSIN KEY=' WS-KEY
+           END-EVALUATE.
+           EXIT.
+
+       END PROGRAM LIBMQTST.
