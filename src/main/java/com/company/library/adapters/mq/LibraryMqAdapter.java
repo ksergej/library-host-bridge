@@ -52,6 +52,7 @@ public class LibraryMqAdapter implements LibraryHostPort {
         } catch (HostTimeoutException ex) {
             throw new LibraryHostUnavailableException("Host timeout while borrowing book", ex);
         } catch (HostCommunicationException ex) {
+            log.error("MQ call failed", ex);
             throw new LibraryHostUnavailableException("Host communication failed while borrowing book", ex);
         }
     }

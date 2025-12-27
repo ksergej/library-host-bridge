@@ -14,6 +14,8 @@ import org.springframework.jms.JmsException;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.jms.core.SessionCallback;
 import org.springframework.stereotype.Component;
+import com.ibm.mq.jakarta.jms.MQQueue;
+import com.ibm.msg.client.jakarta.wmq.WMQConstants;
 
 import com.company.library.infrastructure.correlation.CorrelationIdService;
 
@@ -49,7 +51,7 @@ public class CicsMqGatewayTemplate {
         Objects.requireNonNull(timeout, "timeout must not be null");
 
         try {
-            String messageId = sendAndReturnMessageId(requestPayload, requestQueue);
+            String messageId = sendAndReturnMessageId(requestPayload, requestQueue, replyQueue);
             if (messageId == null) {
                 throw new HostCommunicationException("JMSMessageID is null after sending request");
             }
@@ -72,29 +74,43 @@ public class CicsMqGatewayTemplate {
         }
     }
 
-    private String sendAndReturnMessageId(byte[] requestPayload, String requestQueue) throws JMSException {
-        return jmsTemplate.execute(new SessionCallback<String>() {
-            @Override
-            public String doInJms(Session session) throws JMSException {
-                Destination destination = session.createQueue(requestQueue);
-                BytesMessage message = session.createBytesMessage();
-                message.writeBytes(requestPayload);
+    private String sendAndReturnMessageId(byte[] requestPayload, String requestQueue, String replyQueue) throws JMSException {
+        return jmsTemplate.execute(session -> {
 
-                String correlationId = correlationIdService.getCurrentCorrelationId();
-                if (correlationId != null && !correlationId.isBlank()) {
-                    message.setStringProperty("CorrelationId", correlationId);
-                }
+            // IMPORTANT: create MQ destinations via queue:/// so we can set targetClient
+            Destination reqDest = session.createQueue("queue:///" + requestQueue);
+            Destination repDest = session.createQueue("queue:///" + replyQueue);
 
-                MessageProducer producer = session.createProducer(destination);
-                producer.send(message);
-                if (log.isDebugEnabled()) {
-                    log.debug("Sent MQ request to {} with correlation property {}", requestQueue, correlationId);
-                }
-                return message.getJMSMessageID();
+            // IMPORTANT: force NONJMS -> no RFH2 header (no MQHRF2)
+            if (reqDest instanceof MQQueue mqReq) {
+                mqReq.setTargetClient(WMQConstants.WMQ_CLIENT_NONJMS_MQ);
             }
+            if (repDest instanceof MQQueue mqRep) {
+                mqRep.setTargetClient(WMQConstants.WMQ_CLIENT_NONJMS_MQ);
+            }
+
+            BytesMessage msg = session.createBytesMessage();
+            msg.writeBytes(requestPayload);
+
+            // OPTIONAL but recommended: populate MQMD.ReplyToQ via JMSReplyTo
+            msg.setJMSReplyTo(repDest);
+
+            // IMPORTANT: do NOT set JMS properties here (they can trigger RFH2/JMS headers)
+            // String correlationId = correlationIdService.getCurrentCorrelationId();
+            // (log it only)
+            String correlationId = correlationIdService.getCurrentCorrelationId();
+
+            try (MessageProducer producer = session.createProducer(reqDest)) {
+                producer.send(msg);
+            }
+
+            if (log.isDebugEnabled()) {
+                log.debug("Sent MQ request to {} (httpCorrelationId={})", requestQueue, correlationId);
+            }
+
+            return msg.getJMSMessageID();
         }, true);
     }
-
     private byte[] extractBytes(Message message) throws JMSException {
         if (message instanceof BytesMessage bytesMessage) {
             long length = bytesMessage.getBodyLength();

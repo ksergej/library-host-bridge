@@ -1,23 +1,43 @@
 package com.company.library.config;
 
+import com.ibm.mq.jakarta.jms.MQConnectionFactory;
+import com.ibm.msg.client.jakarta.wmq.WMQConstants;
+import jakarta.jms.ConnectionFactory;
+import jakarta.jms.JMSException;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jms.connection.UserCredentialsConnectionFactoryAdapter;
+import org.springframework.jms.core.JmsTemplate;
 
-/**
- * Placeholder MQ configuration. In the future this class will:
- * <ul>
- *     <li>Construct a vendor-specific ConnectionFactory using MqConnectionProperties.</li>
- *     <li>Expose JmsTemplate and related beans wired to that ConnectionFactory.</li>
- * </ul>
- * No ConnectionFactory is created here to avoid runtime dependencies on MQ.
- */
 @Configuration
 public class MqConfig {
 
-    private final MqConnectionProperties connectionProperties;
+    private final MqConnectionProperties p;
 
-    public MqConfig(MqConnectionProperties connectionProperties) {
-        this.connectionProperties = connectionProperties;
+    public MqConfig(MqConnectionProperties p) {
+        this.p = p;
     }
 
-    // TODO: build ConnectionFactory and JmsTemplate when integrating real MQ.
+    @Bean
+    public ConnectionFactory mqConnectionFactory() throws JMSException {
+        MQConnectionFactory mq = new MQConnectionFactory();
+
+        mq.setTransportType(WMQConstants.WMQ_CM_CLIENT);
+        mq.setHostName(p.getHost());
+        mq.setPort(p.getPort());
+        mq.setChannel(p.getChannel());
+        mq.setQueueManager(p.getQueueManager());
+
+        UserCredentialsConnectionFactoryAdapter cf = new UserCredentialsConnectionFactoryAdapter();
+        cf.setTargetConnectionFactory(mq);
+        cf.setUsername(p.getUser());
+        cf.setPassword(p.getPassword());
+
+        return cf;
+    }
+
+    @Bean
+    public JmsTemplate jmsTemplate(ConnectionFactory mqConnectionFactory) {
+        return new JmsTemplate(mqConnectionFactory);
+    }
 }

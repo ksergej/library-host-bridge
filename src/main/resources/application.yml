@@ -3,13 +3,22 @@ server:
 
 mq:
   library:
-    request-queue: LIB.REQ.TEST
-    reply-queue: LIB.REP.TEST
+    request-queue: Z88011.MQZ3.QLOCAL
+    reply-queue: Z88011.MQZ3.REPLYTO.QLOCAL
     timeout: 5s
   connection:
-    host: localhost
+    host: 204.90.115.200
     port: 1414
-    channel: DEV.CHANNEL
-    queue-manager: DEV.QMGR
-    user: devuser
-    password: devpass
+    channel: WAS.JMS.SVRCONN
+    queue-manager: CSQ9
+    user: Z88011
+    password: TAX98TUX
+
+logging:
+  level:
+    com.company.library: DEBUG
+    org.springframework.jms: DEBUG
+    org.springframework.jms.connection: DEBUG
+    org.springframework.jms.core: DEBUG
+    com.ibm.msg.client: DEBUG
+    com.ibm.mq: DEBUG
