@@ -3,13 +3,25 @@ CBL NOXREF NOMAP NOOFFSET
        PROGRAM-ID. LIBMQTST.
 
        ENVIRONMENT DIVISION.
-       CONFIGURATION SECTION.
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+           SELECT PARAMSFILE ASSIGN TO PARAMS
+               ORGANIZATION IS SEQUENTIAL
+               ACCESS IS SEQUENTIAL
+               FILE STATUS IS PARAMS-STATUS.
 
        DATA DIVISION.
+       FILE SECTION.
+       FD  PARAMSFILE
+           RECORDING MODE IS F
+           RECORD CONTAINS 80 CHARACTERS.
+       01  PARAMS-REC               PIC X(80).
+
        WORKING-STORAGE SECTION.
 
        EXEC SQL INCLUDE SQLCA END-EXEC.
 
+       01  PARAMS-STATUS            PIC XX.
        01  WS-SQLCODE-EDIT      PIC -ZZZ,ZZZ,ZZ9 USAGE DISPLAY.
 
        01  MQM-CONSTANTS.
@@ -30,12 +42,14 @@ CBL NOXREF NOMAP NOOFFSET
        01  WS-QMGR-NAME       PIC X(48) VALUE SPACES.
        01  WS-REQ-QUEUE       PIC X(48) VALUE SPACES.
        01  WS-REP-QUEUE       PIC X(48) VALUE SPACES.
-       01  WS-WAIT-MS         PIC S9(9) COMP VALUE 5000.
-       01  WS-SYSIN-LINE      PIC X(256) VALUE SPACES.
-       01  WS-SYSIN-EOF       PIC X VALUE 'N'.
+       01  WS-WAIT-MS-DISP    PIC 9(9)   VALUE 0.
+       01  WS-WAIT-VAL-STR    PIC X(9).
+       01  WS-WAIT-LEN        PIC S9(4) COMP.
+       01  WS-WAIT-MS         PIC S9(9) COMP-5 VALUE 0.
+       01  WS-CTL-LINE        PIC X(256).
+       01  WS-VAL             PIC X(200).
+       01  WS-EOF             PIC X VALUE 'N'.
        01  WS-KEY             PIC X(16).
-       01  WS-VALUE           PIC X(128).
-       01  WS-WAIT-TEXT       PIC X(16) VALUE SPACES.
 
            COPY LIBLOAN.
 
@@ -66,6 +80,17 @@ CBL NOXREF NOMAP NOOFFSET
        01  WS-START             PIC S9(9) COMP VALUE 0.
        01  WS-END               PIC S9(9) COMP VALUE 0.
        01  WS-LEN               PIC S9(9) COMP VALUE 0.
+      *
+      *    W03 - MQ API fields
+      *
+       01  W03-BUFFER-LENGTH           PIC S9(9) BINARY  VALUE 80.
+       01  W03-HCONN                   PIC S9(9) COMP-5.
+       01  W03-OPTIONS                 PIC S9(9) BINARY.
+       01  W03-HOBJ                    PIC S9(9) BINARY.
+       01  W03-DATA-LENGTH             PIC S9(9) BINARY.
+       01  W03-COMPCODE                PIC S9(9) BINARY.
+       01  W03-REASON                  PIC S9(9) BINARY.
+       01  W03-MESSAGE-DATA            PIC X(80) VALUE SPACES.
 
        PROCEDURE DIVISION.
 
@@ -73,7 +98,9 @@ CBL NOXREF NOMAP NOOFFSET
 
            DISPLAY 'LIBMQTST STARTING'.
 
-           PERFORM READ-SYSIN-SETTINGS.
+           PERFORM READ-CONFIG
+           PERFORM VALIDATE-CONFIG
+
            IF WS-QMGR-NAME = SPACES OR WS-REQ-QUEUE = SPACES
                DISPLAY 'MISSING SYSIN: QMGR OR REQUEST QUEUE'
                GOBACK
@@ -91,6 +118,7 @@ CBL NOXREF NOMAP NOOFFSET
                DISPLAY 'MQCONN FAILED, REASON=' REASON
                GOBACK
            END-IF.
+           DISPLAY 'MQCONN SUCCEEDED, HCONN=' HCONN.
 
            MOVE MQOD-VERSION-4 TO MQOD-VERSION.
            MOVE WS-REQ-QUEUE    TO MQOD-OBJECTNAME.
@@ -117,6 +145,7 @@ CBL NOXREF NOMAP NOOFFSET
                DISPLAY 'MQOPEN REP FAILED, REASON=' REASON
                GO TO MQ-CLOSE-REQ
            END-IF.
+           DISPLAY 'MQOPEN SUCCEEDED FOR BOTH QUEUES'.
 
            MOVE MQGMO-VERSION-1      TO MQGMO-VERSION.
            MOVE MQGMO-WAIT           TO MQGMO-OPTIONS.
@@ -133,12 +162,14 @@ CBL NOXREF NOMAP NOOFFSET
                              MQM-GET-MESSAGE-OPTIONS
                              REQ-DATA-LEN
                              REQ-DATA
+                             W03-DATA-LENGTH
                              COMPCODE
                              REASON.
            IF COMPCODE NOT = MQCC-OK
                DISPLAY 'MQGET FAILED, REASON=' REASON
                GO TO MQ-CLOSE-BOTH
            END-IF.
+           DISPLAY 'MQGET SUCCEEDED, MSGID=' MQMD-MSGID.
 
            MOVE MQMD-MSGID      TO MQMD-CORRELID.
            MOVE MQMI-NONE       TO MQMD-MSGID.
@@ -203,7 +234,7 @@ CBL NOXREF NOMAP NOOFFSET
            EXEC SQL
               SELECT COUNT(*)
                 INTO :WS-ACTIVE-COUNT
-                FROM LIBRARY.LOAN
+                FROM LOAN
                WHERE BOOK_ID    = :HBR-BOOK-ID
                  AND RETURN_DATE IS NULL
            END-EXEC
@@ -220,7 +251,7 @@ CBL NOXREF NOMAP NOOFFSET
            END-IF
 
            EXEC SQL
-              INSERT INTO LIBRARY.LOAN
+              INSERT INTO LOAN
                    (USER_ID, BOOK_ID, LOAN_DATE, DUE_DATE, RETURN_DATE)
               VALUES (:HBR-USER-ID, :HBR-BOOK-ID,
                       CURRENT DATE, CURRENT DATE + 14 DAYS, NULL)
@@ -309,6 +340,7 @@ CBL NOXREF NOMAP NOOFFSET
            IF WS-LEN > 0
                MOVE WS-XML-REQUEST (WS-START + 1: WS-LEN) TO HBR-USER-ID
            END-IF
+           DISPLAY 'EXTRACT-USER: ' HBR-USER-ID
            EXIT.
 
        EXTRACT-BOOK.
@@ -330,6 +362,7 @@ CBL NOXREF NOMAP NOOFFSET
            IF WS-LEN > 0
                MOVE WS-XML-REQUEST (WS-START + 1: WS-LEN) TO HBR-BOOK-ID
            END-IF
+           DISPLAY 'EXTRACT-BOOK: ' HBR-BOOK-ID
            EXIT.
 
       ******************************************************************
@@ -361,54 +394,101 @@ CBL NOXREF NOMAP NOOFFSET
            MOVE WS-XML-RESPONSE TO RSP-DATA.
            EXIT.
 
-      ******************************************************************
-      ** Read SYSIN control cards (KEY=VALUE)
-      ******************************************************************
-       READ-SYSIN-SETTINGS.
-           MOVE SPACES
-             TO WS-QMGR-NAME WS-REQ-QUEUE WS-REP-QUEUE WS-WAIT-TEXT.
-           MOVE 5000 TO WS-WAIT-MS.
-           MOVE 'N'  TO WS-SYSIN-EOF.
-           PERFORM UNTIL WS-SYSIN-EOF = 'Y'
-              ACCEPT WS-SYSIN-LINE FROM SYSIN
-              IF WS-SYSIN-LINE = SPACES
-                 MOVE 'Y' TO WS-SYSIN-EOF
-                 EXIT PERFORM
-              END-IF
-              PERFORM PARSE-SYSIN-LINE
+       READ-CONFIG.
+           OPEN INPUT PARAMSFILE
+
+           IF PARAMS-STATUS NOT = "00"
+               DISPLAY "SYSIN OPEN FAILED, STATUS=" PARAMS-STATUS
+               MOVE 12 TO RETURN-CODE
+               GOBACK
+           END-IF
+
+           PERFORM UNTIL WS-EOF = 'Y'
+               READ PARAMSFILE
+                   AT END
+                       MOVE 'Y' TO WS-EOF
+                   NOT AT END
+                       PERFORM PARSE-CTL-LINE
+               END-READ
            END-PERFORM
+           CLOSE PARAMSFILE.
            EXIT.
 
-      ******************************************************************
-      ** Parse one SYSIN line KEY=VALUE (keys: QMGR, REQ, RPLY, WAIT_MS)
-      ******************************************************************
-       PARSE-SYSIN-LINE.
-           MOVE FUNCTION TRIM(WS-SYSIN-LINE) TO WS-SYSIN-LINE.
-           IF WS-SYSIN-LINE = SPACES
-              EXIT
+       PARSE-CTL-LINE.
+           MOVE PARAMS-REC TO WS-CTL-LINE
+           DISPLAY WS-CTL-LINE
+           IF WS-CTL-LINE = SPACES
+               EXIT PARAGRAPH
            END-IF
-           MOVE SPACES TO WS-KEY WS-VALUE.
-           UNSTRING WS-SYSIN-LINE DELIMITED BY '='
-                    INTO WS-KEY WS-VALUE.
-           INSPECT WS-KEY CONVERTING 'abcdefghijklmnopqrstuvwxyz'
-                                TO 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.
-           MOVE FUNCTION TRIM(WS-VALUE) TO WS-VALUE.
+           IF WS-CTL-LINE(1:1) = '*'
+               OR WS-CTL-LINE(1:1) = '#'
+               EXIT PARAGRAPH
+           END-IF
+
+           MOVE SPACES TO WS-KEY
+           MOVE SPACES TO WS-VAL
+
+           UNSTRING WS-CTL-LINE
+               DELIMITED BY '='
+               INTO WS-KEY WS-VAL
+           END-UNSTRING
+
+           MOVE FUNCTION TRIM(WS-KEY) TO WS-KEY
+           MOVE FUNCTION TRIM(WS-VAL) TO WS-VAL
+
            EVALUATE WS-KEY
-             WHEN 'QMGR'
-                MOVE WS-VALUE TO WS-QMGR-NAME
-             WHEN 'REQ'
-                MOVE WS-VALUE TO WS-REQ-QUEUE
-             WHEN 'RPLY'
-                MOVE WS-VALUE TO WS-REP-QUEUE
-             WHEN 'WAIT_MS'
-                MOVE WS-VALUE TO WS-WAIT-TEXT
-                IF WS-WAIT-TEXT NOT = SPACES
-                   COMPUTE WS-WAIT-MS = FUNCTION NUMVAL(WS-WAIT-TEXT)
-                   ON SIZE ERROR CONTINUE
-                END-IF
-             WHEN OTHER
-                DISPLAY 'UNKNOWN SYSIN KEY=' WS-KEY
+               WHEN 'QMGR'
+                   MOVE WS-VAL TO WS-QMGR-NAME
+               WHEN 'REQ'
+                   MOVE WS-VAL TO WS-REQ-QUEUE
+               WHEN 'RPLY'
+                   MOVE WS-VAL TO WS-REP-QUEUE
+               WHEN 'WAIT_MS'
+                   MOVE 0 TO WS-WAIT-MS-DISP
+                   MOVE SPACES TO WS-WAIT-VAL-STR
+                   MOVE FUNCTION TRIM(WS-VAL) TO WS-WAIT-VAL-STR
+                   COMPUTE WS-WAIT-LEN =
+                   FUNCTION LENGTH(FUNCTION TRIM(WS-VAL))
+
+                   DISPLAY 'CONFIG : WAIT_MS_STR ' WS-WAIT-VAL-STR
+
+                   IF WS-WAIT-LEN > 0
+                      AND WS-WAIT-VAL-STR(1:WS-WAIT-LEN) IS NUMERIC
+                      MOVE WS-WAIT-VAL-STR(1:WS-WAIT-LEN)
+                        TO WS-WAIT-MS-DISP
+                      COMPUTE WS-WAIT-MS = WS-WAIT-MS-DISP
+                   ELSE
+                      DISPLAY 'CONFIG ERROR: WAIT_MS not numeric'
+                      MOVE 0 TO WS-WAIT-MS
+                   END-IF
+                   DISPLAY 'CONFIG : WS-VAL ' WS-VAL
+                   DISPLAY 'CONFIG : WAIT_MS ' WS-WAIT-MS-DISP
+               WHEN OTHER
+                   CONTINUE
            END-EVALUATE.
+           EXIT.
+
+       VALIDATE-CONFIG.
+           IF WS-QMGR-NAME = SPACES
+               DISPLAY 'CONFIG ERROR: QMGR missing'
+               MOVE 12 TO RETURN-CODE
+               STOP RUN
+           END-IF
+           IF WS-REQ-QUEUE = SPACES
+               DISPLAY 'CONFIG ERROR: REQ missing'
+               MOVE 12 TO RETURN-CODE
+               STOP RUN
+           END-IF
+           IF WS-REP-QUEUE = SPACES
+               DISPLAY 'CONFIG ERROR: RPLY missing'
+               MOVE 12 TO RETURN-CODE
+               STOP RUN
+           END-IF
+           IF WS-WAIT-MS <= 0
+               DISPLAY 'CONFIG ERROR: WAIT_MS invalid' WS-WAIT-MS-DISP
+               MOVE 12 TO RETURN-CODE
+               STOP RUN
+           END-IF
            EXIT.
 
        END PROGRAM LIBMQTST.

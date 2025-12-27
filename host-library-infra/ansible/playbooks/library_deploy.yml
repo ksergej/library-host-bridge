@@ -144,6 +144,7 @@
         encoding:
           from: ISO8859-1
           to: IBM-1047
+      tags: [jcltst]
 
     - name: Upload run JCL LIBMQTST
       zos_copy:
@@ -180,6 +181,7 @@
       zos_copy:
         src: "{{ playbook_dir }}/../../db2/schema.sql"
         dest: "{{ sql_pds }}(SCHEMA)"
+        use_template: true
         force: true
         encoding:
           from: ISO8859-1
@@ -189,6 +191,7 @@
       zos_copy:
         src: "{{ playbook_dir }}/../../db2/testdata.sql"
         dest: "{{ sql_pds }}(TESTDATA)"
+        use_template: true
         force: true
         encoding:
           from: ISO8859-1

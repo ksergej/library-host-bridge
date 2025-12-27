@@ -1,104 +1,65 @@
----- DB2 schema for LIBRARY demo
---CREATE SCHEMA LIBRARY;
---
---CREATE TABLE LIBRARY.USERS (
---    USER_ID_NUM   BIGINT       GENERATED ALWAYS AS IDENTITY
---                  (START WITH 1, INCREMENT BY 1),
---    USER_ID       CHAR(10)     NOT NULL,
---    NAME          VARCHAR(100) NOT NULL,
---    REGISTERED_AT TIMESTAMP    NOT NULL WITH DEFAULT CURRENT TIMESTAMP,
---    CONSTRAINT PK_USER PRIMARY KEY (USER_ID_NUM),
---    CONSTRAINT UQ_USER_ID UNIQUE (USER_ID)
---);
---
---CREATE TABLE LIBRARY.BOOK (
---    BOOK_ID_NUM   BIGINT        GENERATED ALWAYS AS IDENTITY
---                  (START WITH 1, INCREMENT BY 1),
---    BOOK_ID       CHAR(10)      NOT NULL,
---    TITLE         VARCHAR(200)  NOT NULL,
---    AUTHOR        VARCHAR(200),
---    STATUS        CHAR(1)       NOT NULL DEFAULT 'A',
---    CONSTRAINT PK_BOOK PRIMARY KEY (BOOK_ID_NUM),
---    CONSTRAINT UQ_BOOK_ID UNIQUE (BOOK_ID)
---);
---
---CREATE TABLE LIBRARY.LOAN (
---    LOAN_ID_NUM   BIGINT       GENERATED ALWAYS AS IDENTITY
---                  (START WITH 1, INCREMENT BY 1),
---    USER_ID       CHAR(10)     NOT NULL,
---    BOOK_ID       CHAR(10)     NOT NULL,
---    LOAN_DATE     DATE         NOT NULL,
---    DUE_DATE      DATE         NOT NULL,
---    RETURN_DATE   DATE,
---    CONSTRAINT PK_LOAN PRIMARY KEY (LOAN_ID_NUM),
---    CONSTRAINT FK_LOAN_USER FOREIGN KEY (USER_ID)
---        REFERENCES LIBRARY.USERS (USER_ID),
---    CONSTRAINT FK_LOAN_BOOK FOREIGN KEY (BOOK_ID)
---        REFERENCES LIBRARY.BOOK (BOOK_ID)
---);
---
----- Optional view to expose computed business LOAN_ID for debugging/querying
---CREATE OR REPLACE VIEW LIBRARY.V_LOAN AS
---SELECT
---  LOAN_ID_NUM,
---  'L' || SUBSTR('000000000' || CHAR(LOAN_ID_NUM),
---                LENGTH('000000000' || CHAR(LOAN_ID_NUM)) - 8, 9)
---      AS LOAN_ID,
---  USER_ID,
---  BOOK_ID,
---  LOAN_DATE,
---  DUE_DATE,
---  RETURN_DATE
---FROM LIBRARY.LOAN;
---
-
-CREATE TABLE UBL_TABLES (
-    UBL_ID_NUM   BIGINT       GENERATED ALWAYS AS IDENTITY
+CREATE TABLE USERS (
+    USER_ID_NUM   BIGINT       GENERATED ALWAYS AS IDENTITY
                   (START WITH 1, INCREMENT BY 1),
-    USER_ID       CHAR(10)     ,
-    NAME          VARCHAR(100) ,
-    REGISTERED_AT TIMESTAMP    ,
-    BOOK_ID       CHAR(10)     ,
-    TITLE         VARCHAR(200) ,
+    USER_ID       CHAR(10)     NOT NULL,
+    NAME          VARCHAR(100) NOT NULL,
+    REGISTERED_AT TIMESTAMP    NOT NULL WITH DEFAULT ,
+    CONSTRAINT PK_USER PRIMARY KEY (USER_ID_NUM),
+    CONSTRAINT UQ_USER_ID UNIQUE (USER_ID)
+)
+in {{ db2.tablespace }}
+;
+
+  CREATE UNIQUE INDEX USERS_I1
+                   ON USERS (USER_ID_NUM  ASC) 
+                   USING STOGROUP ZXPUSER  PRIQTY 12 ERASE NO 
+                   BUFFERPOOL BP0 CLOSE NO;                           
+  CREATE UNIQUE INDEX USERS_I2
+                   ON USERS (USER_ID  ASC) 
+                   USING STOGROUP ZXPUSER  PRIQTY 12 ERASE NO 
+                   BUFFERPOOL BP0 CLOSE NO;                           
+
+
+CREATE TABLE BOOK (
+    BOOK_ID_NUM   BIGINT        GENERATED ALWAYS AS IDENTITY
+                  (START WITH 1, INCREMENT BY 1),
+    BOOK_ID       CHAR(10)      NOT NULL,
+    TITLE         VARCHAR(200)  NOT NULL,
     AUTHOR        VARCHAR(200),
-    STATUS        CHAR(1)      ,
-    LOAN_USER_ID       CHAR(10),
-    LOAN_BOOK_ID       CHAR(10),
-    LOAN_DATE     DATE         ,
-    DUE_DATE      DATE         ,
+    STATUS        CHAR(1)       NOT NULL DEFAULT 'A',
+    CONSTRAINT PK_BOOK PRIMARY KEY (BOOK_ID_NUM),
+    CONSTRAINT UQ_BOOK_ID UNIQUE (BOOK_ID)
+)
+in {{ db2.tablespace }}
+;
+
+  CREATE UNIQUE INDEX BOOK_I1
+                   ON BOOK (BOOK_ID_NUM  ASC) 
+                   USING STOGROUP ZXPUSER  PRIQTY 12 ERASE NO 
+                   BUFFERPOOL BP0 CLOSE NO;                           
+  CREATE UNIQUE INDEX BOOK_I2
+                   ON BOOK (BOOK_ID  ASC) 
+                   USING STOGROUP ZXPUSER  PRIQTY 12 ERASE NO 
+                   BUFFERPOOL BP0 CLOSE NO;                           
+
+CREATE TABLE LOAN (
+    LOAN_ID_NUM   BIGINT       GENERATED ALWAYS AS IDENTITY
+                  (START WITH 1, INCREMENT BY 1),
+    USER_ID       CHAR(10)     NOT NULL,
+    BOOK_ID       CHAR(10)     NOT NULL,
+    LOAN_DATE     DATE         NOT NULL,
+    DUE_DATE      DATE         NOT NULL,
     RETURN_DATE   DATE,
-    CONSTRAINT PK_BOOK PRIMARY KEY (UBL_ID_NUM)
-);
-
-CREATE VIEW LOAN AS
-SELECT
-  UBL_ID_NUM as LOAN_ID_NUM,
-  LOAN_USER_ID,
-  LOAN_BOOK_ID,
-  LOAN_DATE,
-  DUE_DATE,
-  RETURN_DATE
-FROM UBL_TABLES
-where LOAN_USER_ID is not null
+    CONSTRAINT PK_LOAN PRIMARY KEY (LOAN_ID_NUM)
+)
+in {{ db2.tablespace }}
 ;
 
-CREATE VIEW BOOK AS
-SELECT
-    BOOK_ID,
-    TITLE  ,
-    AUTHOR ,
-    STATUS
-FROM UBL_TABLES
-where BOOK_ID is not null
-;
+CREATE UNIQUE INDEX LOAN_I1
+                   ON LOAN (LOAN_ID_NUM  ASC) 
+                   USING STOGROUP ZXPUSER  PRIQTY 12 ERASE NO 
+                   BUFFERPOOL BP0 CLOSE NO;                           
 
-create view users as
-select
-    USER_ID       ,
-    NAME          ,
-    REGISTERED_AT
-from UBL_TABLES
-where user_id is not null
-;
+
 
 commit;

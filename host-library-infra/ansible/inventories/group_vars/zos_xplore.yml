@@ -1,7 +1,7 @@
-hlq: "Z86422"  # placeholder HLQ
+hlq: "Z88011"  # placeholder HLQ
 
 ansible_connection: ssh
-ansible_user: "Z86422"            # replace with your user
+ansible_user: "Z88011"            # replace with your user
 ansible_port: 22
 ansible_ssh_private_key_file: "~/.ssh/id_ed25519"
 ansible_ssh_common_args: "-o StrictHostKeyChecking=accept-new"
@@ -28,22 +28,27 @@ environment_vars:
 
 db2:
   subsystem: "DBDG"              # placeholder subsystem (e.g. DBC1/DSN1)
-  plan: "LIBPLAN"                # placeholder plan if bind/run uses it
-  qualifier: "Z86422"           # schema qualifier
+  plan: "{{ hlq }}"                # placeholder plan if bind/run uses it
+  qualifier: "{{ hlq }}"           # schema qualifier
   loadlib: "DSND10.SDSNLOAD"       # placeholder SDSNLOAD
   exitlib: "DSND10.DBDG.SDSNEXIT"   # optional placeholder SDSNEXIT
   runlib: "SDSN.SDSNRUN"         # optional placeholder SDSNRUN
   dbrmlib: "{{ hlq }}.DBRMLIB"   # DBRM PDS/PDSE
   collection: "{{ hlq }}"        # used in BIND PKLIST(&COLL..*)
+  tablespace: "Z88011.Z88011S"
 
 mq:
   loadlib: "CSQ920.SCSQLOAD"         # placeholder MQ loadlib (SCSQLOAD)
   cobol_copylib: "CSQ920.SCSQCOBC"   # IBM MQ for z/OS 9.2 COBOL copybooks (CMQ*V)
   cobcopylib: "CSQ920.SCSQCOBC"      # alias (preferred name in CBLMQDB2 template)
   qmgr: "CSQ9"
-  request_queue: "Z86422.MQZ3.QLOCAL"
-  reply_queue: "Z86422.MQZ3.REPLYTO.QLOCAL"
+  request_queue: "Z88011.MQZ3.QLOCAL"
+  reply_queue: "Z88011.MQZ3.REPLYTO.QLOCAL"
   wait_ms: 30000
+
+testdata:
+  user_id: "U000000001"
+  book_id: "B000000001"
 
 # COBOL compiler + LE runtime libraries (placeholders; adapt to your Xplore env)
 cobol:
