@@ -100,6 +100,9 @@ public class CicsMqGatewayTemplate {
             // (log it only)
             String correlationId = correlationIdService.getCurrentCorrelationId();
 
+            msg.setStringProperty(WMQConstants.JMS_IBM_FORMAT, "MQSTR   "); // 8 символов!
+            msg.setIntProperty(WMQConstants.JMS_IBM_CHARACTER_SET, 1208);
+
             try (MessageProducer producer = session.createProducer(reqDest)) {
                 producer.send(msg);
             }
