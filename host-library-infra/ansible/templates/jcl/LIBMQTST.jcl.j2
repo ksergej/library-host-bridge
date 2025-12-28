@@ -11,16 +11,25 @@
 //       SET COBLOAD=&HLQ..LOAD
 //       SET MQLOAD={{ mq.loadlib }}
 //*-------------------------------------------------------------*
-//*
-//RUN     EXEC PGM=LIBMQTST,REGION=0M
+//RUN     EXEC PGM=IKJEFT01
 //STEPLIB DD  DSN=&COBLOAD,DISP=SHR
 //        DD  DSN=&MQLOAD,DISP=SHR
 //        DD  DSN=&DB2LOAD,DISP=SHR
-//SYSOUT  DD  SYSOUT=*
+//SYSOUT  DD SYSOUT=*
+//SYSTSIN  DD *,SYMBOLS=CNVTSYS
+ DSN SYSTEM({{ db2.subsystem }})
+ RUN PROGRAM(LIBMQTST) PLAN(&SYSUID) LIB('&SYSUID..LOAD')
+ END
+//SYSIN    DD DUMMY
+//SYSUDUMP DD DUMMY
+//CEEDUMP  DD DUMMY
+//SYSTSPRT DD SYSOUT=*
+//SYSPRINT DD SYSOUT=*
+//SYSOUT  DD  SYSOUT=*,OUTLIM=15000
 //PARAMS  DD  *
 QMGR={{ mq.qmgr }}
 REQ={{ mq.request_queue }}
 RPLY={{ mq.reply_queue }}
 WAIT_MS={{ mq.wait_ms }}
 /*
-//*
+//*-------------------------------------------------------------*

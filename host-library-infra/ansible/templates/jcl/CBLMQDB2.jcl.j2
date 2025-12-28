@@ -63,7 +63,5 @@
 //SYSPRINT DD  SYSOUT=*
 //SYSTSIN  DD  *,SYMBOLS=EXECSYS
  DSN SYSTEM({{ db2.subsystem }})
- BIND PLAN({{ db2.plan }}) PKLIST({{ db2.collection }}.*) -
-      MEMBER({{ host_program_member }}) -
-      ACT(REP) ISO(CS) ENCODING(EBCDIC)
+ BIND PACKAGE({{ hlq }}) MEMBER(LIBMQTST) ACT(REP) ISO(CS) ENCODING(EBCDIC)
 /*

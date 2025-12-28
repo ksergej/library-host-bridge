@@ -1,0 +1,12 @@
+//CBLDBPLA JOB 1,NOTIFY=&SYSUID
+//BIND     EXEC PGM=IKJEFT01                                            00650000
+//STEPLIB  DD DSN=DSND10.SDSNLOAD,DISP=SHR                              00660000
+//DBRMLIB  DD DSN=&SYSUID..DBRMLIB,DISP=SHR
+//SYSUDUMP DD DUMMY                                                     00680000
+//SYSTSPRT DD SYSOUT=*                                                  00690000
+//SYSPRINT DD SYSOUT=*                                                  00700000
+//SYSTSIN  DD *,SYMBOLS=EXECSYS                                         00720002
+ DSN SYSTEM({{ db2.subsystem }})
+ BIND PLAN({{ hlq }}) PKLIST({{ hlq }}.*) -
+ ACT(REP) ISO(CS) ENCODING(EBCDIC)
+/*                                                                      00751001

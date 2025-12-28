@@ -59,9 +59,9 @@ CBL NOXREF NOMAP NOOFFSET
        01  COMPCODE     PIC S9(9) COMP.
        01  REASON       PIC S9(9) COMP.
 
-       01  REQ-DATA             PIC X(256).
+       01  REQ-DATA             PIC X(8192).
        01  RSP-DATA             PIC X(256).
-       01  REQ-DATA-LEN         PIC S9(9) COMP VALUE 0.
+       01  REQ-DATA-LEN         PIC S9(9) COMP VALUE 8192.
        01  RSP-DATA-LEN         PIC S9(9) COMP VALUE 0.
 
        01  WS-ACTIVE-COUNT      PIC S9(9) COMP VALUE 0.
@@ -71,12 +71,12 @@ CBL NOXREF NOMAP NOOFFSET
        01  WS-PADDED            PIC X(9)    VALUE SPACES.
 
        01  WS-SQL-MSG           PIC X(80)   VALUE SPACES.
-       01  WS-XML-REQUEST       PIC X(2048) VALUE SPACES.
-       01  WS-XML-RESPONSE      PIC X(2048) VALUE SPACES.
-       01  WS-TAG-USER-START    PIC X(8)    VALUE "<userId>".
-       01  WS-TAG-USER-END      PIC X(9)    VALUE "</userId>".
-       01  WS-TAG-BOOK-START    PIC X(8)    VALUE "<bookId>".
-       01  WS-TAG-BOOK-END      PIC X(9)    VALUE "</bookId>".
+       01  WS-XML-REQUEST       PIC X(8192) VALUE SPACES.
+       01  WS-XML-RESPONSE      PIC X(8192) VALUE SPACES.
+       01  WS-TAG-USER-START    PIC X(10)    VALUE "<user><id>".
+       01  WS-TAG-USER-END      PIC X(12)    VALUE "</id></user>".
+       01  WS-TAG-BOOK-START    PIC X(10)    VALUE "<book><id>".
+       01  WS-TAG-BOOK-END      PIC X(12)    VALUE "</id></book>".
        01  WS-START             PIC S9(9) COMP VALUE 0.
        01  WS-END               PIC S9(9) COMP VALUE 0.
        01  WS-LEN               PIC S9(9) COMP VALUE 0.
@@ -147,14 +147,16 @@ CBL NOXREF NOMAP NOOFFSET
            END-IF.
            DISPLAY 'MQOPEN SUCCEEDED FOR BOTH QUEUES'.
 
-           MOVE MQGMO-VERSION-1      TO MQGMO-VERSION.
-           MOVE MQGMO-WAIT           TO MQGMO-OPTIONS.
-           MOVE WS-WAIT-MS           TO MQGMO-WAITINTERVAL.
+           MOVE MQGMO-VERSION-1         TO MQGMO-VERSION.
+           MOVE MQMT-DATAGRAM           TO MQMD-MSGTYPE.
 
-           MOVE MQMD-VERSION-1       TO MQMD-VERSION.
-           MOVE MQMT-DATAGRAM        TO MQMD-MSGTYPE.
+           MOVE MQGMO-WAIT              TO MQGMO-OPTIONS
+           ADD  MQGMO-CONVERT           TO MQGMO-OPTIONS
+           ADD  MQGMO-FAIL-IF-QUIESCING TO MQGMO-OPTIONS
+           MOVE WS-WAIT-MS              TO MQGMO-WAITINTERVAL.
 
-           COMPUTE REQ-DATA-LEN = FUNCTION LENGTH(REQ-DATA).
+           MOVE 1047                    TO MQMD-CODEDCHARSETID
+           MOVE MQENC-NATIVE            TO MQMD-ENCODING.
 
            CALL 'MQGET' USING HCONN
                              HOBJ-REQ
@@ -166,15 +168,23 @@ CBL NOXREF NOMAP NOOFFSET
                              COMPCODE
                              REASON.
            IF COMPCODE NOT = MQCC-OK
-               DISPLAY 'MQGET FAILED, REASON=' REASON
-               GO TO MQ-CLOSE-BOTH
+              DISPLAY 'MQGET failed CC=' COMPCODE
+                      ' RC=' REASON
+              DISPLAY 'MQMD-FORMAT =' MQMD-FORMAT
+              DISPLAY 'MQMD-CODEDCHARSETID =' MQMD-CODEDCHARSETID
+              DISPLAY 'MQMD-ENCODING =' MQMD-ENCODING
+              GO TO MQ-CLOSE-BOTH
+           ELSE
+              DISPLAY 'Got ' W03-DATA-LENGTH
+                ' bytes (converted to CCSID '
+                      MQMD-CODEDCHARSETID ')'
+              DISPLAY 'MSG: '  REQ-DATA(1:W03-DATA-LENGTH)
            END-IF.
-           DISPLAY 'MQGET SUCCEEDED, MSGID=' MQMD-MSGID.
 
            MOVE MQMD-MSGID      TO MQMD-CORRELID.
            MOVE MQMI-NONE       TO MQMD-MSGID.
 
-           MOVE REQ-DATA TO WS-XML-REQUEST.
+           MOVE REQ-DATA(1:W03-DATA-LENGTH) TO WS-XML-REQUEST.
 
            PERFORM PARSE-XML-REQUEST.
 
@@ -327,6 +337,8 @@ CBL NOXREF NOMAP NOOFFSET
                TALLYING WS-START
                FOR CHARACTERS BEFORE WS-TAG-USER-START.
            IF WS-START >= LENGTH OF WS-XML-REQUEST
+               DISPLAY 'EXTRACT-USER: WS-START >= LENGTH OF ... '
+                    WS-START
                EXIT
            END-IF
            COMPUTE WS-START = WS-START + LENGTH OF WS-TAG-USER-START.
@@ -334,6 +346,8 @@ CBL NOXREF NOMAP NOOFFSET
                TALLYING WS-END
                FOR CHARACTERS BEFORE WS-TAG-USER-END.
            IF WS-END <= WS-START
+               DISPLAY 'EXTRACT-USER: WS-END <= WS-START '
+                        WS-END
                EXIT
            END-IF
            COMPUTE WS-LEN = WS-END - WS-START.
