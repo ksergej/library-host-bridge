@@ -1,13 +1,10 @@
 package com.company.library.gateway;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Objects;
-import jakarta.jms.BytesMessage;
-import jakarta.jms.Destination;
-import jakarta.jms.JMSException;
-import jakarta.jms.Message;
-import jakarta.jms.MessageProducer;
-import jakarta.jms.Session;
+
+import jakarta.jms.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jms.JmsException;
@@ -115,6 +112,12 @@ public class CicsMqGatewayTemplate {
         }, true);
     }
     private byte[] extractBytes(Message message) throws JMSException {
+        if (message instanceof TextMessage textMessage) {
+            // JMS (IBM MQ) конвертирует CCSID 1047 -> Java String (Unicode)
+            String text = textMessage.getText();
+            return text.getBytes(StandardCharsets.UTF_8);
+        }
+
         if (message instanceof BytesMessage bytesMessage) {
             long length = bytesMessage.getBodyLength();
             if (length > Integer.MAX_VALUE) {
@@ -124,6 +127,7 @@ public class CicsMqGatewayTemplate {
             bytesMessage.readBytes(data);
             return data;
         }
+
         throw new HostCommunicationException("Unsupported reply message type: " + message.getClass().getName());
     }
 }

@@ -5,7 +5,7 @@ mq:
   library:
     request-queue: Z88011.MQZ3.QLOCAL
     reply-queue: Z88011.MQZ3.REPLYTO.QLOCAL
-    timeout: 5s
+    timeout: 60s
   connection:
     host: 204.90.115.200
     port: 1414

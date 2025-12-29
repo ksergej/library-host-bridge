@@ -73,6 +73,10 @@ CBL NOXREF NOMAP NOOFFSET
        01  WS-SQL-MSG           PIC X(80)   VALUE SPACES.
        01  WS-XML-REQUEST       PIC X(8192) VALUE SPACES.
        01  WS-XML-RESPONSE      PIC X(8192) VALUE SPACES.
+       01  WS-XML               PIC X(8192) VALUE SPACES.
+       01  WS-XML-LEN           PIC S9(9) COMP.
+       01  WS-PTR               PIC S9(9) COMP.
+
        01  WS-TAG-USER-START    PIC X(10)    VALUE "<user><id>".
        01  WS-TAG-USER-END      PIC X(12)    VALUE "</id></user>".
        01  WS-TAG-BOOK-START    PIC X(10)    VALUE "<book><id>".
@@ -188,9 +192,13 @@ CBL NOXREF NOMAP NOOFFSET
 
            PERFORM PARSE-XML-REQUEST.
 
+           DISPLAY 'PARSE COMPLETE, STATUS=' HBR-STATUS-CODE
+
            IF HBR-STATUS-CODE NOT = 'ERR '
                PERFORM PROCESS-REQUEST
            END-IF
+
+           DISPLAY 'PROCESS COMPLETE, STATUS=' HBR-STATUS-CODE
 
            PERFORM BUILD-XML-RESPONSE.
 
@@ -249,15 +257,21 @@ CBL NOXREF NOMAP NOOFFSET
                  AND RETURN_DATE IS NULL
            END-EXEC
 
+           DISPLAY 'sqlcode after select= ' SQLCODE
+           DISPLAY 'ACTIVE COUNT=' WS-ACTIVE-COUNT
+
            IF SQLCODE NOT = 0
                PERFORM SQL-ERROR
-               GO TO BUILD-RESPONSE
+               PERFORM BUILD-RESPONSE
+                EXIT
            END-IF
 
            IF WS-ACTIVE-COUNT > 0
                MOVE 'BUSY' TO HBR-STATUS-CODE
                MOVE 'Book already on loan' TO HBR-MESSAGE
-               GO TO BUILD-RESPONSE
+               DISPLAY 'BOOK ' HBR-BOOK-ID ' ALREADY ON LOAN'
+               PERFORM BUILD-RESPONSE
+                EXIT
            END-IF
 
            EXEC SQL
@@ -267,9 +281,12 @@ CBL NOXREF NOMAP NOOFFSET
                       CURRENT DATE, CURRENT DATE + 14 DAYS, NULL)
            END-EXEC
 
+           DISPLAY 'sqlcode after insert= ' SQLCODE
+
            IF SQLCODE NOT = 0
                PERFORM SQL-ERROR
-               GO TO BUILD-RESPONSE
+               PERFORM BUILD-RESPONSE
+               EXIT
            END-IF
 
            EXEC SQL
@@ -277,23 +294,26 @@ CBL NOXREF NOMAP NOOFFSET
                 INTO :WS-LOAN-ID-NUM
            END-EXEC
 
+           DISPLAY 'sqlcode after IDENTITY_VAL_LOCAL= ' SQLCODE
            IF SQLCODE NOT = 0
                PERFORM SQL-ERROR
-               GO TO BUILD-RESPONSE
+               PERFORM BUILD-RESPONSE
+               EXIT
            END-IF
 
            MOVE WS-LOAN-ID-NUM TO WS-NEW-LOAN-NUM
-           MOVE ALL '0' TO WS-PADDED
-           STRING WS-PADDED DELIMITED BY SIZE
-                  WS-NEW-LOAN-NUM DELIMITED BY SIZE
-             INTO WS-PADDED
-           MOVE 'L' TO WS-NEW-LOAN-ID (1:1)
-           MOVE WS-PADDED( LENGTH OF WS-PADDED - 8:9 )
-             TO WS-NEW-LOAN-ID (2:9)
+           DISPLAY 'NEW LOAN NUM=' WS-NEW-LOAN-NUM
+
+           MOVE SPACES TO WS-NEW-LOAN-ID
+           MOVE 'L'    TO WS-NEW-LOAN-ID (1:1)
+           MOVE WS-NEW-LOAN-NUM TO WS-NEW-LOAN-ID (2:9)
+
+           DISPLAY 'WS-NEW-LOAN-ID=' WS-NEW-LOAN-ID
 
            MOVE WS-NEW-LOAN-ID TO HBR-LOAN-ID
            MOVE 'OK'           TO HBR-STATUS-CODE
            MOVE 'Loan created' TO HBR-MESSAGE
+           DISPLAY 'LOAN CREATED, ID=' HBR-LOAN-ID
 
            EXEC SQL COMMIT END-EXEC.
 
@@ -329,6 +349,7 @@ CBL NOXREF NOMAP NOOFFSET
                MOVE 'ERR ' TO HBR-STATUS-CODE
                MOVE 'Invalid XML' TO HBR-MESSAGE
            END-IF.
+
            EXIT.
 
        EXTRACT-USER.
@@ -337,8 +358,6 @@ CBL NOXREF NOMAP NOOFFSET
                TALLYING WS-START
                FOR CHARACTERS BEFORE WS-TAG-USER-START.
            IF WS-START >= LENGTH OF WS-XML-REQUEST
-               DISPLAY 'EXTRACT-USER: WS-START >= LENGTH OF ... '
-                    WS-START
                EXIT
            END-IF
            COMPUTE WS-START = WS-START + LENGTH OF WS-TAG-USER-START.
@@ -346,8 +365,6 @@ CBL NOXREF NOMAP NOOFFSET
                TALLYING WS-END
                FOR CHARACTERS BEFORE WS-TAG-USER-END.
            IF WS-END <= WS-START
-               DISPLAY 'EXTRACT-USER: WS-END <= WS-START '
-                        WS-END
                EXIT
            END-IF
            COMPUTE WS-LEN = WS-END - WS-START.
@@ -385,21 +402,29 @@ CBL NOXREF NOMAP NOOFFSET
        BUILD-XML-RESPONSE.
            MOVE SPACES TO WS-XML-RESPONSE.
            STRING
-              '<HostBorrowResponse>' DELIMITED BY SIZE
+              '<HostBorrowResponse ' DELIMITED BY SIZE
+              ' xmlns="http://company.com/library/host/schema">'
+                                     DELIMITED BY SIZE
+              '<loan>'             DELIMITED BY SIZE
               '<loanId>'             DELIMITED BY SIZE
               HBR-LOAN-ID            DELIMITED BY SIZE
               '</loanId>'            DELIMITED BY SIZE
-              '<userId>'             DELIMITED BY SIZE
+              '<user>'             DELIMITED BY SIZE
+              '<id>'             DELIMITED BY SIZE
               HBR-USER-ID-R          DELIMITED BY SIZE
-              '</userId>'            DELIMITED BY SIZE
-              '<bookId>'             DELIMITED BY SIZE
+              '</id>'             DELIMITED BY SIZE
+              '</user>'            DELIMITED BY SIZE
+              '<book>'             DELIMITED BY SIZE
+              '<id>'             DELIMITED BY SIZE
               HBR-BOOK-ID-R          DELIMITED BY SIZE
-              '</bookId>'            DELIMITED BY SIZE
+              '</id>'             DELIMITED BY SIZE
+              '</book>'            DELIMITED BY SIZE
+              '</loan>'             DELIMITED BY SIZE
               '<statusCode>'         DELIMITED BY SIZE
-              HBR-STATUS-CODE        DELIMITED BY SIZE
+              FUNCTION TRIM(HBR-STATUS-CODE)   DELIMITED BY SIZE
               '</statusCode>'        DELIMITED BY SIZE
               '<message>'            DELIMITED BY SIZE
-              HBR-MESSAGE            DELIMITED BY SIZE
+              FUNCTION TRIM(HBR-MESSAGE) DELIMITED BY SIZE
               '</message>'           DELIMITED BY SIZE
               '</HostBorrowResponse>' DELIMITED BY SIZE
             INTO WS-XML-RESPONSE
