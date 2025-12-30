@@ -126,3 +126,5 @@ npm-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Local secrets (do not commit)
+src/main/resources/application-xplore.yml
