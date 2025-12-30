@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HostBorrowRequest xmlns="http://company.com/library/host/schema">
+  <user>
+    <id>user-123</id>
+    <name>Jane Reader</name>
+    <email>jane.reader@example.com</email>
+  </user>
+  <book>
+    <id>book-456</id>
+    <title>Domain-Driven Design</title>
+    <author>Eric Evans</author>
+  </book>
+  <requestedDueDate>2025-01-31</requestedDueDate>
+</HostBorrowRequest>

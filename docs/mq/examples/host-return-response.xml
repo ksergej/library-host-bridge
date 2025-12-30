@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HostReturnResponse xmlns="http://company.com/library/host/schema">
+  <loan>
+    <loanId>L000000001</loanId>
+    <user>
+      <id>user-123</id>
+      <name>Jane Reader</name>
+      <email>jane.reader@example.com</email>
+    </user>
+    <book>
+      <id>book-456</id>
+      <title>Domain-Driven Design</title>
+      <author>Eric Evans</author>
+    </book>
+    <borrowDate>2025-01-01</borrowDate>
+    <dueDate>2025-01-15</dueDate>
+    <returnDate>2025-01-10</returnDate>
+    <status>RETURNED</status>
+  </loan>
+  <statusCode>OK</statusCode>
+  <message>Loan returned</message>
+</HostReturnResponse>

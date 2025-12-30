@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HostReturnRequest xmlns="http://company.com/library/host/schema">
+  <loanId>L000000001</loanId>
+</HostReturnRequest>
