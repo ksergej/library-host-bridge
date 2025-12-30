@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HostActiveLoansByUserResponse xmlns="http://company.com/library/host/schema">
+  <statusCode>OK</statusCode>
+  <message>Active loans returned</message>
+  <userId>U000000001</userId>
+  <loan>
+    <loanId>L000000101</loanId>
+    <bookId>B000000777</bookId>
+  </loan>
+  <loan>
+    <loanId>L000000102</loanId>
+    <bookId>B000000778</bookId>
+  </loan>
+</HostActiveLoansByUserResponse>

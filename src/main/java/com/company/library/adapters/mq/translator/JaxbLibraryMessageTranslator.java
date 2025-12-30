@@ -1,8 +1,12 @@
 package com.company.library.adapters.mq.translator;
 
 import com.company.library.adapters.mq.LibraryMqAdapter;
+import com.company.library.domain.model.LoanRef;
+import com.company.library.host.schema.HostActiveLoansByUserRequest;
+import com.company.library.host.schema.HostActiveLoansByUserResponse;
 import com.company.library.host.schema.HostBorrowRequest;
 import com.company.library.host.schema.HostBorrowResponse;
+import com.company.library.host.schema.HostLoanRef;
 import com.company.library.host.schema.HostReturnRequest;
 import com.company.library.host.schema.HostReturnResponse;
 import com.company.library.domain.model.Loan;
@@ -14,6 +18,8 @@ import jakarta.xml.bind.Marshaller;
 import jakarta.xml.bind.Unmarshaller;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.nio.charset.StandardCharsets;
 import javax.xml.transform.stream.StreamSource;
 
@@ -34,6 +40,8 @@ public class JaxbLibraryMessageTranslator implements LibraryMessageTranslator {
         this.jaxbContext = JAXBContext.newInstance(
             HostBorrowRequest.class,
             HostBorrowResponse.class,
+            HostActiveLoansByUserRequest.class,
+            HostActiveLoansByUserResponse.class,
             HostReturnRequest.class,
             HostReturnResponse.class
         );
@@ -101,6 +109,41 @@ public class JaxbLibraryMessageTranslator implements LibraryMessageTranslator {
         } catch (JAXBException ex) {
             log.error("Failed to unmarshal host return response XML", ex);
             throw new IllegalStateException("Failed to unmarshal host return response", ex);
+        }
+    }
+
+    @Override
+    public byte[] toHostActiveLoansByUserRequest(String userId) {
+        HostActiveLoansByUserRequest request = new HostActiveLoansByUserRequest();
+        request.setUserId(userId);
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            Marshaller marshaller = jaxbContext.createMarshaller();
+            marshaller.marshal(objectFactory.createHostActiveLoansByUserRequest(request), baos);
+            return baos.toByteArray();
+        } catch (JAXBException ex) {
+            throw new IllegalStateException("Failed to marshal active loans request", ex);
+        }
+    }
+
+    @Override
+    public List<LoanRef> fromHostActiveLoansByUserResponse(byte[] responsePayload) {
+        try {
+            Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
+            HostActiveLoansByUserResponse response = unmarshaller.unmarshal(
+                new StreamSource(new ByteArrayInputStream(responsePayload)),
+                HostActiveLoansByUserResponse.class
+            ).getValue();
+            List<LoanRef> loans = new ArrayList<>();
+            if (response.getLoan() != null) {
+                for (HostLoanRef hostLoan : response.getLoan()) {
+                    loans.add(new LoanRef(hostLoan.getLoanId(), hostLoan.getBookId()));
+                }
+            }
+            return loans;
+        } catch (JAXBException ex) {
+            log.error("Failed to unmarshal active loans response XML", ex);
+            throw new IllegalStateException("Failed to unmarshal active loans response", ex);
         }
     }
 }

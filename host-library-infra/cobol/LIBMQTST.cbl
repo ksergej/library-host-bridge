@@ -54,6 +54,15 @@ CBL NOXREF NOMAP NOOFFSET NOSOURCE
 
            COPY LIBLOAN.
 
+           EXEC SQL
+           DECLARE CUR-ACTIVE-LOANS CURSOR FOR
+               SELECT LOAN_ID_NUM, BOOK_ID
+                 FROM LOAN
+                WHERE USER_ID = :HAU-USER-ID
+                  AND RETURN_DATE IS NULL
+                ORDER BY LOAN_ID_NUM
+           END-EXEC.
+
        01  HCONN        PIC S9(9) COMP.
        01  HOBJ-REQ     PIC S9(9) COMP.
        01  HOBJ-REP     PIC S9(9) COMP.
@@ -61,7 +70,7 @@ CBL NOXREF NOMAP NOOFFSET NOSOURCE
        01  REASON       PIC S9(9) COMP.
 
        01  REQ-DATA             PIC X(8192).
-       01  RSP-DATA             PIC X(256).
+       01  RSP-DATA             PIC X(8192).
        01  REQ-DATA-LEN         PIC S9(9) COMP VALUE 8192.
        01  RSP-DATA-LEN         PIC S9(9) COMP VALUE 0.
 
@@ -70,6 +79,9 @@ CBL NOXREF NOMAP NOOFFSET NOSOURCE
        01  WS-NEW-LOAN-NUM      PIC 9(9)    VALUE 0.
        01  WS-NEW-LOAN-ID       PIC X(10)   VALUE SPACES.
        01  WS-PADDED            PIC X(9)    VALUE SPACES.
+       01  WS-ACTIVE-LOAN-COUNT PIC 9(2)    COMP VALUE 0.
+       01  WS-ACTIVE-LOAN-ID-NUM PIC S9(9) COMP VALUE 0.
+       01  WS-ACTIVE-BOOK-ID    PIC X(10)   VALUE SPACES.
 
        01  WS-SQL-MSG           PIC X(80)   VALUE SPACES.
        01  WS-XML-REQUEST       PIC X(8192) VALUE SPACES.
@@ -77,12 +89,16 @@ CBL NOXREF NOMAP NOOFFSET NOSOURCE
        01  WS-XML               PIC X(8192) VALUE SPACES.
        01  WS-XML-LEN           PIC S9(9) COMP.
        01  WS-PTR               PIC S9(9) COMP.
+       01  WS-INDEX             PIC 9(2) COMP VALUE 0.
 
        01  WS-RETURN-COUNT      PIC S9(9) COMP VALUE 0.
+       01  WS-ACTIVE-REQ-COUNT  PIC S9(9) COMP VALUE 0.
        01  WS-TAG-USER-START    PIC X(10)    VALUE "<user><id>".
        01  WS-TAG-USER-END      PIC X(12)    VALUE "</id></user>".
        01  WS-TAG-BOOK-START    PIC X(10)    VALUE "<book><id>".
        01  WS-TAG-BOOK-END      PIC X(12)    VALUE "</id></book>".
+       01  WS-TAG-ACTIVE-USERID-START PIC X(8) VALUE "<userId>".
+       01  WS-TAG-ACTIVE-USERID-END   PIC X(9) VALUE "</userId>".
        01  WS-TAG-LOANID-START  PIC X(8)     VALUE "<loanId>".
        01  WS-TAG-LOANID-END    PIC X(9)     VALUE "</loanId>".
        01  WS-START             PIC S9(9) COMP VALUE 0.
@@ -196,26 +212,40 @@ CBL NOXREF NOMAP NOOFFSET NOSOURCE
 
            PERFORM PARSE-XML-REQUEST.
 
-           IF WS-REQUEST-TYPE = 'RETURN'
-               DISPLAY 'PARSE COMPLETE, STATUS=' HRR-STATUS-CODE
+           IF WS-REQUEST-TYPE = 'ACTIVE'
+               DISPLAY 'PARSE COMPLETE, STATUS=' HAU-STATUS-CODE
            ELSE
-               DISPLAY 'PARSE COMPLETE, STATUS=' HBR-STATUS-CODE
-           END-IF
-
-           IF WS-REQUEST-TYPE = 'RETURN'
-               IF HRR-STATUS-CODE NOT = 'ERR '
-                   PERFORM PROCESS-RETURN
-               END-IF
-           ELSE
-               IF HBR-STATUS-CODE NOT = 'ERR '
-                   PERFORM PROCESS-BORROW
+               IF WS-REQUEST-TYPE = 'RETURN'
+                   DISPLAY 'PARSE COMPLETE, STATUS=' HRR-STATUS-CODE
+               ELSE
+                   DISPLAY 'PARSE COMPLETE, STATUS=' HBR-STATUS-CODE
                END-IF
            END-IF
 
-           IF WS-REQUEST-TYPE = 'RETURN'
-               DISPLAY 'PROCESS COMPLETE, STATUS=' HRR-STATUS-CODE
+           IF WS-REQUEST-TYPE = 'ACTIVE'
+               IF HAU-STATUS-CODE NOT = 'ERR '
+                   PERFORM PROCESS-ACTIVE-BY-USER
+               END-IF
            ELSE
-               DISPLAY 'PROCESS COMPLETE, STATUS=' HBR-STATUS-CODE
+               IF WS-REQUEST-TYPE = 'RETURN'
+                   IF HRR-STATUS-CODE NOT = 'ERR '
+                       PERFORM PROCESS-RETURN
+                   END-IF
+               ELSE
+                   IF HBR-STATUS-CODE NOT = 'ERR '
+                       PERFORM PROCESS-BORROW
+                   END-IF
+               END-IF
+           END-IF
+
+           IF WS-REQUEST-TYPE = 'ACTIVE'
+               DISPLAY 'PROCESS COMPLETE, STATUS=' HAU-STATUS-CODE
+           ELSE
+               IF WS-REQUEST-TYPE = 'RETURN'
+                   DISPLAY 'PROCESS COMPLETE, STATUS=' HRR-STATUS-CODE
+               ELSE
+                   DISPLAY 'PROCESS COMPLETE, STATUS=' HBR-STATUS-CODE
+               END-IF
            END-IF
 
            PERFORM BUILD-XML-RESPONSE.
@@ -402,12 +432,72 @@ CBL NOXREF NOMAP NOOFFSET NOSOURCE
 
            EXEC SQL COMMIT END-EXEC.
 
+       PROCESS-ACTIVE-BY-USER.
+           MOVE SPACES TO HOST-ACTIVE-BY-USER-RESPONSE.
+           MOVE HAU-USER-ID TO HAU-USER-ID-R.
+           MOVE 0 TO WS-ACTIVE-LOAN-COUNT HAU-LOAN-COUNT.
+           MOVE SPACES TO HAU-LOANS.
+
+           IF HAU-USER-ID = SPACES
+               MOVE 'ERR ' TO HAU-STATUS-CODE
+               MOVE 'Missing userId' TO HAU-MESSAGE
+               EXIT
+           END-IF
+
+           EXEC SQL
+              OPEN CUR-ACTIVE-LOANS
+           END-EXEC
+           IF SQLCODE NOT = 0
+               PERFORM SQL-ERROR
+               EXIT
+           END-IF
+
+           PERFORM UNTIL WS-ACTIVE-LOAN-COUNT >= 50
+               EXEC SQL
+                  FETCH CUR-ACTIVE-LOANS
+                    INTO :WS-ACTIVE-LOAN-ID-NUM, :WS-ACTIVE-BOOK-ID
+               END-EXEC
+               IF SQLCODE = 0
+                   ADD 1 TO WS-ACTIVE-LOAN-COUNT
+                   MOVE WS-ACTIVE-LOAN-ID-NUM TO WS-NEW-LOAN-NUM
+                   MOVE SPACES TO WS-NEW-LOAN-ID
+                   MOVE 'L'    TO WS-NEW-LOAN-ID (1:1)
+                   MOVE WS-NEW-LOAN-NUM TO WS-NEW-LOAN-ID (2:9)
+                   MOVE WS-NEW-LOAN-ID
+                     TO HAU-LOAN-ID (WS-ACTIVE-LOAN-COUNT)
+                   MOVE WS-ACTIVE-BOOK-ID
+                     TO HAU-BOOK-ID (WS-ACTIVE-LOAN-COUNT)
+               ELSE
+                   IF SQLCODE = 100
+                       EXIT PERFORM
+                   ELSE
+                       PERFORM SQL-ERROR
+                       EXIT PERFORM
+                   END-IF
+               END-IF
+           END-PERFORM
+
+           EXEC SQL
+              CLOSE CUR-ACTIVE-LOANS
+           END-EXEC
+
+           IF HAU-STATUS-CODE NOT = 'ERR '
+               MOVE WS-ACTIVE-LOAN-COUNT TO HAU-LOAN-COUNT
+               MOVE 'OK' TO HAU-STATUS-CODE
+               MOVE 'Active loans returned' TO HAU-MESSAGE
+           END-IF
+           EXIT.
+
        BUILD-RESPONSE.
            MOVE SPACES TO RSP-DATA.
-           IF WS-REQUEST-TYPE = 'RETURN'
-               MOVE HOST-RETURN-RESPONSE TO RSP-DATA
+           IF WS-REQUEST-TYPE = 'ACTIVE'
+               MOVE HOST-ACTIVE-BY-USER-RESPONSE TO RSP-DATA
            ELSE
-               MOVE HOST-BORROW-RESPONSE TO RSP-DATA
+               IF WS-REQUEST-TYPE = 'RETURN'
+                   MOVE HOST-RETURN-RESPONSE TO RSP-DATA
+               ELSE
+                   MOVE HOST-BORROW-RESPONSE TO RSP-DATA
+               END-IF
            END-IF.
            EXIT.
 
@@ -418,12 +508,17 @@ CBL NOXREF NOMAP NOOFFSET NOSOURCE
            STRING 'SQL ERROR ' DELIMITED BY SIZE
                WS-SQLCODE-EDIT DELIMITED BY SIZE
              INTO WS-SQL-MSG.
-           IF WS-REQUEST-TYPE = 'RETURN'
-               MOVE 'ERR ' TO HRR-STATUS-CODE
-               MOVE WS-SQL-MSG TO HRR-MESSAGE
+           IF WS-REQUEST-TYPE = 'ACTIVE'
+               MOVE 'ERR ' TO HAU-STATUS-CODE
+               MOVE WS-SQL-MSG TO HAU-MESSAGE
            ELSE
-               MOVE 'ERR ' TO HBR-STATUS-CODE
-               MOVE WS-SQL-MSG TO HBR-MESSAGE
+               IF WS-REQUEST-TYPE = 'RETURN'
+                   MOVE 'ERR ' TO HRR-STATUS-CODE
+                   MOVE WS-SQL-MSG TO HRR-MESSAGE
+               ELSE
+                   MOVE 'ERR ' TO HBR-STATUS-CODE
+                   MOVE WS-SQL-MSG TO HBR-MESSAGE
+               END-IF
            END-IF.
            EXEC SQL ROLLBACK END-EXEC.
            EXIT.
@@ -432,30 +527,46 @@ CBL NOXREF NOMAP NOOFFSET NOSOURCE
       ** Parse XML request into HOST-BORROW-REQUEST
       ******************************************************************
        PARSE-XML-REQUEST.
-           MOVE SPACES TO HOST-BORROW-REQUEST HOST-RETURN-REQUEST.
-           MOVE 'OK'    TO HBR-STATUS-CODE HRR-STATUS-CODE.
-           MOVE SPACES  TO HBR-MESSAGE HRR-MESSAGE.
+           MOVE SPACES TO HOST-BORROW-REQUEST HOST-RETURN-REQUEST
+               HOST-ACTIVE-BY-USER-REQUEST.
+           MOVE 'OK'    TO HBR-STATUS-CODE HRR-STATUS-CODE
+               HAU-STATUS-CODE.
+           MOVE SPACES  TO HBR-MESSAGE HRR-MESSAGE HAU-MESSAGE.
            MOVE SPACES  TO WS-REQUEST-TYPE.
+
+           MOVE 0 TO WS-ACTIVE-REQ-COUNT.
+           INSPECT WS-XML-REQUEST
+               TALLYING WS-ACTIVE-REQ-COUNT
+               FOR ALL "<HostActiveLoansByUserRequest".
 
            MOVE 0 TO WS-RETURN-COUNT.
            INSPECT WS-XML-REQUEST
                TALLYING WS-RETURN-COUNT
                FOR ALL "<HostReturnRequest".
 
-           IF WS-RETURN-COUNT > 0
-               MOVE 'RETURN' TO WS-REQUEST-TYPE
-               PERFORM EXTRACT-LOAN-ID
-               IF HRR-LOAN-ID = SPACES
-                   MOVE 'ERR ' TO HRR-STATUS-CODE
-                   MOVE 'Invalid XML' TO HRR-MESSAGE
+           IF WS-ACTIVE-REQ-COUNT > 0
+               MOVE 'ACTIVE' TO WS-REQUEST-TYPE
+               PERFORM EXTRACT-ACTIVE-USER-ID
+               IF HAU-USER-ID = SPACES
+                   MOVE 'ERR ' TO HAU-STATUS-CODE
+                   MOVE 'Invalid XML' TO HAU-MESSAGE
                END-IF
            ELSE
-               MOVE 'BORROW' TO WS-REQUEST-TYPE
-               PERFORM EXTRACT-USER
-               PERFORM EXTRACT-BOOK
-               IF HBR-USER-ID = SPACES OR HBR-BOOK-ID = SPACES
-                   MOVE 'ERR ' TO HBR-STATUS-CODE
-                   MOVE 'Invalid XML' TO HBR-MESSAGE
+               IF WS-RETURN-COUNT > 0
+                   MOVE 'RETURN' TO WS-REQUEST-TYPE
+                   PERFORM EXTRACT-LOAN-ID
+                   IF HRR-LOAN-ID = SPACES
+                       MOVE 'ERR ' TO HRR-STATUS-CODE
+                       MOVE 'Invalid XML' TO HRR-MESSAGE
+                   END-IF
+               ELSE
+                   MOVE 'BORROW' TO WS-REQUEST-TYPE
+                   PERFORM EXTRACT-USER
+                   PERFORM EXTRACT-BOOK
+                   IF HBR-USER-ID = SPACES OR HBR-BOOK-ID = SPACES
+                       MOVE 'ERR ' TO HBR-STATUS-CODE
+                       MOVE 'Invalid XML' TO HBR-MESSAGE
+                   END-IF
                END-IF
            END-IF.
 
@@ -505,6 +616,29 @@ CBL NOXREF NOMAP NOOFFSET NOSOURCE
            DISPLAY 'EXTRACT-BOOK: ' HBR-BOOK-ID
            EXIT.
 
+       EXTRACT-ACTIVE-USER-ID.
+           MOVE 0 TO WS-START WS-END WS-LEN.
+           INSPECT WS-XML-REQUEST
+               TALLYING WS-START
+               FOR CHARACTERS BEFORE WS-TAG-ACTIVE-USERID-START.
+           IF WS-START >= LENGTH OF WS-XML-REQUEST
+               EXIT
+           END-IF
+           COMPUTE WS-START = WS-START + LENGTH
+                OF WS-TAG-ACTIVE-USERID-START.
+           INSPECT WS-XML-REQUEST
+               TALLYING WS-END
+               FOR CHARACTERS BEFORE WS-TAG-ACTIVE-USERID-END.
+           IF WS-END <= WS-START
+               EXIT
+           END-IF
+           COMPUTE WS-LEN = WS-END - WS-START.
+           IF WS-LEN > 0
+               MOVE WS-XML-REQUEST (WS-START + 1: WS-LEN) TO HAU-USER-ID
+           END-IF
+           DISPLAY 'EXTRACT-ACTIVE-USER-ID: ' HAU-USER-ID
+           EXIT.
+
        EXTRACT-LOAN-ID.
            MOVE 0 TO WS-START WS-END WS-LEN.
            INSPECT WS-XML-REQUEST
@@ -532,7 +666,46 @@ CBL NOXREF NOMAP NOOFFSET NOSOURCE
       ******************************************************************
        BUILD-XML-RESPONSE.
            MOVE SPACES TO WS-XML-RESPONSE.
-           IF WS-REQUEST-TYPE = 'RETURN'
+           IF WS-REQUEST-TYPE = 'ACTIVE'
+               MOVE 1 TO WS-PTR
+               STRING
+                  '<HostActiveLoansByUserResponse ' DELIMITED BY SIZE
+                  ' xmlns="http://company.com/library/host/schema">'
+                                         DELIMITED BY SIZE
+                  '<statusCode>'         DELIMITED BY SIZE
+                  FUNCTION TRIM(HAU-STATUS-CODE)   DELIMITED BY SIZE
+                  '</statusCode>'        DELIMITED BY SIZE
+                  '<message>'            DELIMITED BY SIZE
+                  FUNCTION TRIM(HAU-MESSAGE) DELIMITED BY SIZE
+                  '</message>'           DELIMITED BY SIZE
+                  '<userId>'             DELIMITED BY SIZE
+                  FUNCTION TRIM(HAU-USER-ID-R) DELIMITED BY SIZE
+                  '</userId>'            DELIMITED BY SIZE
+                INTO WS-XML-RESPONSE WITH POINTER WS-PTR
+               END-STRING
+               MOVE 1 TO WS-INDEX
+               PERFORM UNTIL WS-INDEX > HAU-LOAN-COUNT
+                   STRING
+                      '<loan>'             DELIMITED BY SIZE
+                      '<loanId>'           DELIMITED BY SIZE
+                      FUNCTION TRIM(HAU-LOAN-ID (WS-INDEX))
+                                           DELIMITED BY SIZE
+                      '</loanId>'          DELIMITED BY SIZE
+                      '<bookId>'           DELIMITED BY SIZE
+                      FUNCTION TRIM(HAU-BOOK-ID (WS-INDEX))
+                                           DELIMITED BY SIZE
+                      '</bookId>'          DELIMITED BY SIZE
+                      '</loan>'            DELIMITED BY SIZE
+                    INTO WS-XML-RESPONSE WITH POINTER WS-PTR
+                   END-STRING
+                   ADD 1 TO WS-INDEX
+               END-PERFORM
+               STRING
+                  '</HostActiveLoansByUserResponse>' DELIMITED BY SIZE
+                INTO WS-XML-RESPONSE WITH POINTER WS-PTR
+               END-STRING
+           ELSE
+               IF WS-REQUEST-TYPE = 'RETURN'
                STRING
                   '<HostReturnResponse ' DELIMITED BY SIZE
                   ' xmlns="http://company.com/library/host/schema">'
@@ -590,6 +763,7 @@ CBL NOXREF NOMAP NOOFFSET NOSOURCE
                   '</HostBorrowResponse>' DELIMITED BY SIZE
                 INTO WS-XML-RESPONSE
                END-STRING
+               END-IF
            END-IF.
            MOVE SPACES TO RSP-DATA.
            MOVE WS-XML-RESPONSE TO RSP-DATA.

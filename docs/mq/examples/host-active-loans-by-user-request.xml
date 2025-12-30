@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HostActiveLoansByUserRequest xmlns="http://company.com/library/host/schema">
+  <userId>U000000001</userId>
+</HostActiveLoansByUserRequest>

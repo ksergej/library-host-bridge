@@ -1,9 +1,12 @@
 package com.company.library.tools;
 
+import com.company.library.host.schema.HostActiveLoansByUserRequest;
+import com.company.library.host.schema.HostActiveLoansByUserResponse;
 import com.company.library.host.schema.HostBook;
 import com.company.library.host.schema.HostBorrowRequest;
 import com.company.library.host.schema.HostBorrowResponse;
 import com.company.library.host.schema.HostLoan;
+import com.company.library.host.schema.HostLoanRef;
 import com.company.library.host.schema.HostReturnRequest;
 import com.company.library.host.schema.HostReturnResponse;
 import com.company.library.host.schema.HostUser;
@@ -28,6 +31,8 @@ public final class HostXmlSampleGenerator {
         JAXBContext context = JAXBContext.newInstance(
             HostBorrowRequest.class,
             HostBorrowResponse.class,
+            HostActiveLoansByUserRequest.class,
+            HostActiveLoansByUserResponse.class,
             HostReturnRequest.class,
             HostReturnResponse.class
         );
@@ -69,10 +74,28 @@ public final class HostXmlSampleGenerator {
         returnResponse.setStatusCode("OK");
         returnResponse.setMessage("Loan returned");
 
+        HostActiveLoansByUserRequest activeRequest = new HostActiveLoansByUserRequest();
+        activeRequest.setUserId("U000000001");
+
+        HostActiveLoansByUserResponse activeResponse = new HostActiveLoansByUserResponse();
+        activeResponse.setStatusCode("OK");
+        activeResponse.setMessage("Active loans returned");
+        activeResponse.setUserId("U000000001");
+        HostLoanRef ref1 = new HostLoanRef();
+        ref1.setLoanId("L000000101");
+        ref1.setBookId("B000000777");
+        activeResponse.getLoan().add(ref1);
+        HostLoanRef ref2 = new HostLoanRef();
+        ref2.setLoanId("L000000102");
+        ref2.setBookId("B000000778");
+        activeResponse.getLoan().add(ref2);
+
         write(outputDir.resolve("host-borrow-request.xml"), marshaller, factory.createHostBorrowRequest(request));
         write(outputDir.resolve("host-borrow-response.xml"), marshaller, factory.createHostBorrowResponse(response));
         write(outputDir.resolve("host-return-request.xml"), marshaller, factory.createHostReturnRequest(returnRequest));
         write(outputDir.resolve("host-return-response.xml"), marshaller, factory.createHostReturnResponse(returnResponse));
+        write(outputDir.resolve("host-active-loans-by-user-request.xml"), marshaller, factory.createHostActiveLoansByUserRequest(activeRequest));
+        write(outputDir.resolve("host-active-loans-by-user-response.xml"), marshaller, factory.createHostActiveLoansByUserResponse(activeResponse));
     }
 
     private static HostUser buildUser() {

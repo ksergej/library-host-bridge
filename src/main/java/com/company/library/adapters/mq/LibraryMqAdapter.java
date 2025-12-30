@@ -3,11 +3,13 @@ package com.company.library.adapters.mq;
 import com.company.library.adapters.mq.translator.LibraryMessageTranslator;
 import com.company.library.config.LibraryMqProperties;
 import com.company.library.domain.model.Loan;
+import com.company.library.domain.model.LoanRef;
 import com.company.library.gateway.CicsMqGatewayTemplate;
 import com.company.library.gateway.HostCommunicationException;
 import com.company.library.gateway.HostTimeoutException;
 import com.company.library.ports.LibraryHostPort;
 import com.company.library.ports.LibraryHostUnavailableException;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -79,6 +81,31 @@ public class LibraryMqAdapter implements LibraryHostPort {
         } catch (HostCommunicationException ex) {
             log.error("MQ call failed", ex);
             throw new LibraryHostUnavailableException("Host communication failed while returning book", ex);
+        }
+    }
+
+    @Override
+    public List<LoanRef> listActiveLoansByUser(String userId) {
+        try {
+            byte[] requestPayload = translator.toHostActiveLoansByUserRequest(userId);
+            if (log.isDebugEnabled()) {
+                log.debug("Sending active loans request to host via MQ");
+            }
+            byte[] responsePayload = gateway.callHost(
+                requestPayload,
+                properties.getRequestQueue(),
+                properties.getReplyQueue(),
+                properties.getTimeout()
+            );
+            if (log.isDebugEnabled()) {
+                log.debug("Received active loans response from host via MQ");
+            }
+            return translator.fromHostActiveLoansByUserResponse(responsePayload);
+        } catch (HostTimeoutException ex) {
+            throw new LibraryHostUnavailableException("Host timeout while listing active loans", ex);
+        } catch (HostCommunicationException ex) {
+            log.error("MQ call failed", ex);
+            throw new LibraryHostUnavailableException("Host communication failed while listing active loans", ex);
         }
     }
 }

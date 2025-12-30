@@ -8,6 +8,8 @@
     <xs:element name="HostBorrowResponse" type="HostBorrowResponse"/>
     <xs:element name="HostReturnRequest" type="HostReturnRequest"/>
     <xs:element name="HostReturnResponse" type="HostReturnResponse"/>
+    <xs:element name="HostActiveLoansByUserRequest" type="HostActiveLoansByUserRequest"/>
+    <xs:element name="HostActiveLoansByUserResponse" type="HostActiveLoansByUserResponse"/>
 
     <xs:complexType name="HostBorrowRequest">
         <xs:sequence>
@@ -36,6 +38,28 @@
             <xs:element name="loan" type="HostLoan" minOccurs="0"/>
             <xs:element name="statusCode" type="xs:string"/>
             <xs:element name="message" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="HostActiveLoansByUserRequest">
+        <xs:sequence>
+            <xs:element name="userId" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="HostActiveLoansByUserResponse">
+        <xs:sequence>
+            <xs:element name="statusCode" type="xs:string"/>
+            <xs:element name="message" type="xs:string" minOccurs="0"/>
+            <xs:element name="userId" type="xs:string"/>
+            <xs:element name="loan" type="HostLoanRef" minOccurs="0" maxOccurs="50"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="HostLoanRef">
+        <xs:sequence>
+            <xs:element name="loanId" type="xs:string"/>
+            <xs:element name="bookId" type="xs:string"/>
         </xs:sequence>
     </xs:complexType>
 

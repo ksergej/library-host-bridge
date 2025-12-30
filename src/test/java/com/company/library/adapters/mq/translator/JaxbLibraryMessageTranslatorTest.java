@@ -3,8 +3,11 @@ package com.company.library.adapters.mq.translator;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.company.library.domain.model.LoanRef;
+import com.company.library.host.schema.HostActiveLoansByUserResponse;
 import com.company.library.host.schema.HostBorrowResponse;
 import com.company.library.host.schema.HostLoan;
+import com.company.library.host.schema.HostLoanRef;
 import com.company.library.host.schema.HostReturnResponse;
 import com.company.library.host.schema.HostUser;
 import com.company.library.domain.model.Loan;
@@ -12,6 +15,7 @@ import com.company.library.mapping.LoanHostMapper;
 import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.Marshaller;
 import java.io.ByteArrayOutputStream;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
@@ -107,5 +111,44 @@ class JaxbLibraryMessageTranslatorTest {
         byte[] invalid = "<broken>".getBytes();
 
         assertThrows(IllegalStateException.class, () -> translator.fromHostReturnResponse(invalid));
+    }
+
+    @Test
+    void toHostActiveLoansByUserRequestShouldProduceXmlWithUserId() {
+        byte[] xml = translator.toHostActiveLoansByUserRequest("U10");
+
+        String xmlString = new String(xml);
+        assertThat(xmlString).contains("<userId>U10</userId>");
+    }
+
+    @Test
+    void fromHostActiveLoansByUserResponseShouldMapLoans() throws Exception {
+        HostActiveLoansByUserResponse response = new HostActiveLoansByUserResponse();
+        response.setUserId("U10");
+        response.setStatusCode("OK");
+        response.setMessage("Active loans");
+
+        HostLoanRef loan1 = new HostLoanRef();
+        loan1.setLoanId("L1");
+        loan1.setBookId("B1");
+        response.getLoan().add(loan1);
+
+        HostLoanRef loan2 = new HostLoanRef();
+        loan2.setLoanId("L2");
+        loan2.setBookId("B2");
+        response.getLoan().add(loan2);
+
+        JAXBContext ctx = JAXBContext.newInstance(HostActiveLoansByUserResponse.class);
+        Marshaller marshaller = ctx.createMarshaller();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        marshaller.marshal(new com.company.library.host.schema.ObjectFactory().createHostActiveLoansByUserResponse(response), baos);
+
+        List<LoanRef> loans = translator.fromHostActiveLoansByUserResponse(baos.toByteArray());
+
+        assertThat(loans).hasSize(2);
+        assertThat(loans.get(0).getLoanId()).isEqualTo("L1");
+        assertThat(loans.get(0).getBookId()).isEqualTo("B1");
+        assertThat(loans.get(1).getLoanId()).isEqualTo("L2");
+        assertThat(loans.get(1).getBookId()).isEqualTo("B2");
     }
 }

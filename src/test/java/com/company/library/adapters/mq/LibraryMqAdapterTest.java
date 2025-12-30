@@ -8,6 +8,8 @@ import static org.mockito.Mockito.when;
 import com.company.library.adapters.mq.translator.LibraryMessageTranslator;
 import com.company.library.config.LibraryMqProperties;
 import com.company.library.domain.model.Loan;
+import com.company.library.domain.model.LoanRef;
+import java.util.List;
 import com.company.library.gateway.CicsMqGatewayTemplate;
 import com.company.library.gateway.HostCommunicationException;
 import com.company.library.gateway.HostTimeoutException;
@@ -121,5 +123,45 @@ class LibraryMqAdapterTest {
             .thenThrow(new HostTimeoutException("timeout"));
 
         assertThrows(LibraryHostUnavailableException.class, () -> adapter.returnBook("loan-1"));
+    }
+
+    @Test
+    void listActiveLoansByUserShouldTranslateAndCallGateway() {
+        List<LoanRef> output = List.of(new LoanRef("L1", "B1"));
+        byte[] request = "req".getBytes();
+        byte[] response = "resp".getBytes();
+
+        when(translator.toHostActiveLoansByUserRequest("user-1")).thenReturn(request);
+        when(gateway.callHost(request, "LIB.REQ", "LIB.REP", Duration.ofSeconds(3))).thenReturn(response);
+        when(translator.fromHostActiveLoansByUserResponse(response)).thenReturn(output);
+
+        List<LoanRef> result = adapter.listActiveLoansByUser("user-1");
+
+        assertSame(output, result);
+        verify(translator).toHostActiveLoansByUserRequest("user-1");
+        verify(gateway).callHost(request, "LIB.REQ", "LIB.REP", Duration.ofSeconds(3));
+        verify(translator).fromHostActiveLoansByUserResponse(response);
+    }
+
+    @Test
+    void listActiveLoansByUserPropagatesGatewayErrors() {
+        byte[] request = "req".getBytes();
+
+        when(translator.toHostActiveLoansByUserRequest("user-1")).thenReturn(request);
+        when(gateway.callHost(request, "LIB.REQ", "LIB.REP", Duration.ofSeconds(3)))
+            .thenThrow(new HostCommunicationException("fail"));
+
+        assertThrows(LibraryHostUnavailableException.class, () -> adapter.listActiveLoansByUser("user-1"));
+    }
+
+    @Test
+    void listActiveLoansByUserWrapsTimeout() {
+        byte[] request = "req".getBytes();
+
+        when(translator.toHostActiveLoansByUserRequest("user-1")).thenReturn(request);
+        when(gateway.callHost(request, "LIB.REQ", "LIB.REP", Duration.ofSeconds(3)))
+            .thenThrow(new HostTimeoutException("timeout"));
+
+        assertThrows(LibraryHostUnavailableException.class, () -> adapter.listActiveLoansByUser("user-1"));
     }
 }

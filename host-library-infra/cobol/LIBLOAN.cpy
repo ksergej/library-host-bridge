@@ -28,3 +28,18 @@
            05 HRR-STATUS-CODE    PIC X(4).
            05 HRR-MESSAGE        PIC X(80).
            05 HRR-RESERVED-R     PIC X(40).
+
+       01  HOST-ACTIVE-BY-USER-REQUEST.
+           05 HAU-USER-ID        PIC X(10).
+           05 HAU-RESERVED       PIC X(40).
+
+       01  HOST-ACTIVE-BY-USER-RESPONSE.
+           05 HAU-USER-ID-R      PIC X(10).
+           05 HAU-STATUS-CODE    PIC X(4).
+           05 HAU-MESSAGE        PIC X(80).
+           05 HAU-LOAN-COUNT     PIC 9(2) COMP.
+           05 HAU-LOANS.
+               10 HAU-LOAN OCCURS 50 TIMES.
+                   15 HAU-LOAN-ID   PIC X(10).
+                   15 HAU-BOOK-ID   PIC X(10).
+           05 HAU-RESERVED-R     PIC X(20).
