@@ -16,3 +16,15 @@
            05 HBR-STATUS-CODE    PIC X(4).
            05 HBR-MESSAGE        PIC X(80).
            05 HBR-RESERVED-R     PIC X(40).
+
+       01  HOST-RETURN-REQUEST.
+           05 HRR-LOAN-ID        PIC X(10).
+           05 HRR-RESERVED       PIC X(40).
+
+       01  HOST-RETURN-RESPONSE.
+           05 HRR-LOAN-ID-R      PIC X(10).
+           05 HRR-USER-ID-R      PIC X(10).
+           05 HRR-BOOK-ID-R      PIC X(10).
+           05 HRR-STATUS-CODE    PIC X(4).
+           05 HRR-MESSAGE        PIC X(80).
+           05 HRR-RESERVED-R     PIC X(40).

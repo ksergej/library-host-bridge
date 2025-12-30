@@ -2,6 +2,7 @@ package com.company.library.api.rest;
 
 import com.company.library.api.rest.dto.BorrowBookRequest;
 import com.company.library.api.rest.dto.LoanResponse;
+import com.company.library.api.rest.dto.ReturnBookRequest;
 import com.company.library.application.LoanAppService;
 import com.company.library.mapping.LoanRestMapper;
 import jakarta.validation.Valid;
@@ -20,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/loans")
-@Tag(name = "Loans", description = "Operations for borrowing books via host MQ/COBOL")
+@Tag(name = "Loans", description = "Operations for borrowing and returning books via host MQ/COBOL")
 public class LoanController {
 
     private final LoanAppService loanAppService;
@@ -45,6 +46,23 @@ public class LoanController {
     public LoanResponse borrow(@Valid @RequestBody BorrowBookRequest request) {
         return loanRestMapper.toResponse(
             loanAppService.borrowBook(loanRestMapper.toDomain(request))
+        );
+    }
+
+    @PostMapping("/return")
+    @ResponseStatus(HttpStatus.OK)
+    @Operation(
+        summary = "Return a book",
+        description = "Return book via host integration (MQ → COBOL/DB2)."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Returned", content = @Content(schema = @Schema(implementation = LoanResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Validation error", content = @Content(schema = @Schema(implementation = com.company.library.api.rest.dto.ErrorResponse.class))),
+        @ApiResponse(responseCode = "503", description = "Host unavailable", content = @Content(schema = @Schema(implementation = com.company.library.api.rest.dto.ErrorResponse.class)))
+    })
+    public LoanResponse returnBook(@Valid @RequestBody ReturnBookRequest request) {
+        return loanRestMapper.toResponse(
+            loanAppService.returnBook(request.loanId())
         );
     }
 }

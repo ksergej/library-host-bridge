@@ -96,7 +96,7 @@ class CicsMqGatewayTemplateTest {
     }
 
     @Test
-    void shouldSetCorrelationIdPropertyWhenPresent() throws Exception {
+    void shouldNotSetCorrelationIdPropertyWhenPresent() throws Exception {
         byte[] request = "req".getBytes();
 
         when(jmsTemplate.getReceiveTimeout()).thenReturn(5000L);
@@ -105,13 +105,16 @@ class CicsMqGatewayTemplateTest {
             SessionCallback<?> callback = invocation.getArgument(0);
             Session session = org.mockito.Mockito.mock(Session.class);
             Queue destination = org.mockito.Mockito.mock(Queue.class);
+            Queue replyDestination = org.mockito.Mockito.mock(Queue.class);
             BytesMessage message = org.mockito.Mockito.mock(BytesMessage.class);
             MessageProducer producer = org.mockito.Mockito.mock(MessageProducer.class);
-            org.mockito.Mockito.when(session.createQueue("REQ.QUEUE")).thenReturn(destination);
+            org.mockito.Mockito.when(session.createQueue("queue:///REQ.QUEUE")).thenReturn(destination);
+            org.mockito.Mockito.when(session.createQueue("queue:///REP.QUEUE")).thenReturn(replyDestination);
             org.mockito.Mockito.when(session.createBytesMessage()).thenReturn(message);
             org.mockito.Mockito.when(session.createProducer(destination)).thenReturn(producer);
             callback.doInJms(session);
-            org.mockito.Mockito.verify(message).setStringProperty("CorrelationId", "corr-123");
+            org.mockito.Mockito.verify(message, org.mockito.Mockito.never())
+                .setStringProperty("CorrelationId", "corr-123");
             return "ID:123";
         });
         when(jmsTemplate.receiveSelected(anyString(), anyString())).thenReturn(replyMessage);

@@ -3,16 +3,16 @@ server:
 
 mq:
   library:
-    request-queue: Z88011.MQZ3.QLOCAL
-    reply-queue: Z88011.MQZ3.REPLYTO.QLOCAL
-    timeout: 60s
+    request-queue: LIB.REQ.TEST
+    reply-queue: LIB.REP.TEST
+    timeout: 5s
   connection:
-    host: 204.90.115.200
+    host: localhost
     port: 1414
-    channel: WAS.JMS.SVRCONN
-    queue-manager: CSQ9
-    user: Z88011
-    password: TAX98TUX
+    channel: DEV.SVRCONN
+    queue-manager: QM1
+    user: ""
+    password: ""
 
 logging:
   level:

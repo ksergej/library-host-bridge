@@ -8,4 +8,6 @@ import com.company.library.domain.model.Loan;
 public interface LibraryHostPort {
 
     Loan borrowBook(Loan loan);
+
+    Loan returnBook(String loanId);
 }

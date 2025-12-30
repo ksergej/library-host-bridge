@@ -16,4 +16,8 @@ public class LoanAppService {
     public Loan borrowBook(Loan loan) {
         return libraryHostPort.borrowBook(loan);
     }
+
+    public Loan returnBook(String loanId) {
+        return libraryHostPort.returnBook(loanId);
+    }
 }

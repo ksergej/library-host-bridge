@@ -10,4 +10,8 @@ public interface LibraryMessageTranslator {
     byte[] toHostRequest(Loan loan);
 
     Loan fromHostResponse(byte[] responsePayload);
+
+    byte[] toHostReturnRequest(String loanId);
+
+    Loan fromHostReturnResponse(byte[] responsePayload);
 }

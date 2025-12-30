@@ -99,4 +99,57 @@ class LoanControllerTest {
             .andExpect(jsonPath("$.message").isNotEmpty())
             .andExpect(jsonPath("$.correlationId").isNotEmpty());
     }
+
+    @Test
+    void postReturnShouldReturnLoanResponse() throws Exception {
+        Loan domainResponse = new Loan("loan-1", "user-1", "book-1");
+
+        when(loanAppService.returnBook("loan-1")).thenReturn(domainResponse);
+
+        mockMvc.perform(post("/api/loans/return")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "loanId": "loan-1"
+                        }
+                        """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value("loan-1"))
+            .andExpect(jsonPath("$.userId").value("user-1"))
+            .andExpect(jsonPath("$.bookId").value("book-1"));
+
+        verify(loanAppService).returnBook("loan-1");
+    }
+
+    @Test
+    void postReturnWhenHostUnavailableReturnsServiceUnavailable() throws Exception {
+        when(loanAppService.returnBook("loan-1"))
+            .thenThrow(new com.company.library.ports.LibraryHostUnavailableException("Host down"));
+
+        mockMvc.perform(post("/api/loans/return")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "loanId": "loan-1"
+                        }
+                        """))
+            .andExpect(status().isServiceUnavailable())
+            .andExpect(jsonPath("$.error").value("HOST_UNAVAILABLE"))
+            .andExpect(jsonPath("$.message").value("Host down"))
+            .andExpect(jsonPath("$.correlationId").isNotEmpty());
+    }
+
+    @Test
+    void postReturnWithMissingLoanIdReturnsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/loans/return")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                        }
+                        """))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
+            .andExpect(jsonPath("$.message").isNotEmpty())
+            .andExpect(jsonPath("$.correlationId").isNotEmpty());
+    }
 }

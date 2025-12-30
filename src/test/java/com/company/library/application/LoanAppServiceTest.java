@@ -37,4 +37,16 @@ class LoanAppServiceTest {
         assertSame(response, result);
         verify(libraryHostPort).borrowBook(request);
     }
+
+    @Test
+    void returnBookDelegatesToHostPort() {
+        Loan response = new Loan("loan-1", "user-1", "book-1");
+
+        when(libraryHostPort.returnBook("loan-1")).thenReturn(response);
+
+        Loan result = loanAppService.returnBook("loan-1");
+
+        assertSame(response, result);
+        verify(libraryHostPort).returnBook("loan-1");
+    }
 }

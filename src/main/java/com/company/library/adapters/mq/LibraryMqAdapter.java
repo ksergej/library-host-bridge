@@ -56,4 +56,29 @@ public class LibraryMqAdapter implements LibraryHostPort {
             throw new LibraryHostUnavailableException("Host communication failed while borrowing book", ex);
         }
     }
+
+    @Override
+    public Loan returnBook(String loanId) {
+        try {
+            byte[] requestPayload = translator.toHostReturnRequest(loanId);
+            if (log.isDebugEnabled()) {
+                log.debug("Sending return request to host via MQ");
+            }
+            byte[] responsePayload = gateway.callHost(
+                requestPayload,
+                properties.getRequestQueue(),
+                properties.getReplyQueue(),
+                properties.getTimeout()
+            );
+            if (log.isDebugEnabled()) {
+                log.debug("Received return response from host via MQ");
+            }
+            return translator.fromHostReturnResponse(responsePayload);
+        } catch (HostTimeoutException ex) {
+            throw new LibraryHostUnavailableException("Host timeout while returning book", ex);
+        } catch (HostCommunicationException ex) {
+            log.error("MQ call failed", ex);
+            throw new LibraryHostUnavailableException("Host communication failed while returning book", ex);
+        }
+    }
 }

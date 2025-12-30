@@ -82,4 +82,44 @@ class LibraryMqAdapterTest {
 
         assertThrows(LibraryHostUnavailableException.class, () -> adapter.borrowBook(input));
     }
+
+    @Test
+    void returnBookShouldTranslateAndCallGateway() {
+        Loan output = new Loan("loan-2", "user-2", "book-2");
+        byte[] request = "req".getBytes();
+        byte[] response = "resp".getBytes();
+
+        when(translator.toHostReturnRequest("loan-1")).thenReturn(request);
+        when(gateway.callHost(request, "LIB.REQ", "LIB.REP", Duration.ofSeconds(3))).thenReturn(response);
+        when(translator.fromHostReturnResponse(response)).thenReturn(output);
+
+        Loan result = adapter.returnBook("loan-1");
+
+        assertSame(output, result);
+        verify(translator).toHostReturnRequest("loan-1");
+        verify(gateway).callHost(request, "LIB.REQ", "LIB.REP", Duration.ofSeconds(3));
+        verify(translator).fromHostReturnResponse(response);
+    }
+
+    @Test
+    void returnBookPropagatesGatewayErrors() {
+        byte[] request = "req".getBytes();
+
+        when(translator.toHostReturnRequest("loan-1")).thenReturn(request);
+        when(gateway.callHost(request, "LIB.REQ", "LIB.REP", Duration.ofSeconds(3)))
+            .thenThrow(new HostCommunicationException("fail"));
+
+        assertThrows(LibraryHostUnavailableException.class, () -> adapter.returnBook("loan-1"));
+    }
+
+    @Test
+    void returnBookWrapsTimeout() {
+        byte[] request = "req".getBytes();
+
+        when(translator.toHostReturnRequest("loan-1")).thenReturn(request);
+        when(gateway.callHost(request, "LIB.REQ", "LIB.REP", Duration.ofSeconds(3)))
+            .thenThrow(new HostTimeoutException("timeout"));
+
+        assertThrows(LibraryHostUnavailableException.class, () -> adapter.returnBook("loan-1"));
+    }
 }

@@ -3,6 +3,8 @@ package com.company.library.adapters.mq.translator;
 import com.company.library.adapters.mq.LibraryMqAdapter;
 import com.company.library.host.schema.HostBorrowRequest;
 import com.company.library.host.schema.HostBorrowResponse;
+import com.company.library.host.schema.HostReturnRequest;
+import com.company.library.host.schema.HostReturnResponse;
 import com.company.library.domain.model.Loan;
 import com.company.library.host.schema.ObjectFactory;
 import com.company.library.mapping.LoanHostMapper;
@@ -29,7 +31,12 @@ public class JaxbLibraryMessageTranslator implements LibraryMessageTranslator {
 
     public JaxbLibraryMessageTranslator(LoanHostMapper loanHostMapper) throws JAXBException {
         this.loanHostMapper = loanHostMapper;
-        this.jaxbContext = JAXBContext.newInstance(HostBorrowRequest.class, HostBorrowResponse.class);
+        this.jaxbContext = JAXBContext.newInstance(
+            HostBorrowRequest.class,
+            HostBorrowResponse.class,
+            HostReturnRequest.class,
+            HostReturnResponse.class
+        );
     }
 
     @Override
@@ -66,6 +73,34 @@ public class JaxbLibraryMessageTranslator implements LibraryMessageTranslator {
             log.error("Failed to unmarshal host response XML", ex);
             throw new IllegalStateException("Failed to unmarshal host response", ex);
 
+        }
+    }
+
+    @Override
+    public byte[] toHostReturnRequest(String loanId) {
+        HostReturnRequest request = loanHostMapper.toHostReturnRequest(loanId);
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            Marshaller marshaller = jaxbContext.createMarshaller();
+            marshaller.marshal(objectFactory.createHostReturnRequest(request), baos);
+            return baos.toByteArray();
+        } catch (JAXBException ex) {
+            throw new IllegalStateException("Failed to marshal host return request", ex);
+        }
+    }
+
+    @Override
+    public Loan fromHostReturnResponse(byte[] responsePayload) {
+        try {
+            Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
+            HostReturnResponse response = unmarshaller.unmarshal(
+                new StreamSource(new ByteArrayInputStream(responsePayload)),
+                HostReturnResponse.class
+            ).getValue();
+            return loanHostMapper.fromHostReturnResponse(response);
+        } catch (JAXBException ex) {
+            log.error("Failed to unmarshal host return response XML", ex);
+            throw new IllegalStateException("Failed to unmarshal host return response", ex);
         }
     }
 }

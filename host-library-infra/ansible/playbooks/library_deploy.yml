@@ -106,6 +106,7 @@
         encoding:
           from: ISO8859-1
           to: IBM-1047
+      tags: [cobol, copy, source]
 
     - name: Prepare local rendered JCL directory
       ansible.builtin.file:
