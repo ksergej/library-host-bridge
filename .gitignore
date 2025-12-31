@@ -112,6 +112,7 @@ codex.log
 *.7z
 *.rar
 *.tmp
+*.tmp-*
 
 ############################
 # Other misc
@@ -127,4 +128,5 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Local secrets (do not commit)
-src/main/resources/application-xplore.yml
+loan-command-service/src/main/resources/application-xplore.yml
+loan-query-service/src/main/resources/application-xplore.yml

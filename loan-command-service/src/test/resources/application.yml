@@ -1,0 +1,24 @@
+server:
+  port: 8080
+
+mq:
+  library:
+    request-queue: LIB.REQ.TEST
+    reply-queue: LIB.REP.TEST
+    timeout: 5s
+  connection:
+    host: localhost
+    port: 1414
+    channel: DEV.SVRCONN
+    queue-manager: QM1
+    user: ""
+    password: ""
+
+logging:
+  level:
+    com.company.library: DEBUG
+    org.springframework.jms: DEBUG
+    org.springframework.jms.connection: DEBUG
+    org.springframework.jms.core: DEBUG
+    com.ibm.msg.client: DEBUG
+    com.ibm.mq: DEBUG

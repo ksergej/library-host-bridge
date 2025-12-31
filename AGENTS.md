@@ -56,6 +56,10 @@ Library System: REST API на Spring Boot, который через IBM MQ вы
 3. Пиши тесты:
    - Для MQ-слоя: юнит-тесты с моками JmsTemplate и Translator.
    - Не добавляй интеграционные тесты с реальным MQ без явной инструкции.
+4. Если добавляешь/удаляешь/переименовываешь тесты, обновляй docs/testing/TEST_CATALOG.md в том же PR/коммите.
+5. Если добавляешь/удаляешь/переименовываешь модули или меняешь run/test команды, обновляй docs/runbooks/MODULES_AND_MVN_COMMANDS.md в том же PR/коммите.
+6. Если меняешь модули/эндпоинты/run/test команды или workflows деплоя, обновляй README.md в том же PR/коммите.
+7. Если меняешь host smoke/debug workflow, модули, эндпоинты или run команды, обновляй docs/runbooks/HOST_SMOKE_AND_DEBUG.md в том же PR/коммите.
 
 ## Example tasks you can do
 
@@ -65,4 +69,3 @@ Library System: REST API на Spring Boot, который через IBM MQ вы
 - Реализовать `CicsMqGatewayTemplate` по CorrelId=MsgId.
 - Дописать `LibraryMqAdapter` и соответствующие тесты.
 - Настроить JAXB-слой по XSD в `contract/host-schema/`.
-
