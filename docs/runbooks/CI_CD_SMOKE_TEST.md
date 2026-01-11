@@ -28,6 +28,30 @@ cp scripts/cicd/cicd.env.example scripts/cicd/cicd.env
 
 All scripts in `scripts/cicd/` will source `scripts/cicd/cicd.env` if present.
 
+## GitHub CI/CD Variables & Secrets Contract
+
+Repository variables:
+
+- AWS_REGION (optional, default: eu-central-1)
+- ECS_CLUSTER (optional, default: LIBRARY-ECS-CLUSTER)
+- ECS_SERVICE_COMMAND (required)
+- ECS_SERVICE_QUERY (required)
+- ECR_REPO_COMMAND (required)
+- ECR_REPO_QUERY (required)
+- ENABLE_LATEST_TAG (optional, default: false)
+
+Repository secrets:
+
+- AWS_ROLE_TO_ASSUME (required, IAM role ARN trusted by GitHub OIDC)
+
+## Docker build notes (CI/CD)
+
+- Dockerfiles live in:
+  - `loan-command-service/Dockerfile`
+  - `loan-query-service/Dockerfile`
+- CI/CD builds images from each service module directory after `mvn -DskipTests package`,
+  using `target/*.jar` as the runtime artifact and exposing port 8080.
+
 ## Environment variables
 
 ```bash
@@ -171,6 +195,12 @@ CloudWatch Logs hints (if configured in task definitions):
 # List ECS log groups (if CloudWatch Logs is configured)
 aws logs describe-log-groups --log-group-name-prefix "/ecs/" --region "$REGION" --output table
 ```
+
+## How to manually trigger deploy (workflow_dispatch)
+
+1) In GitHub, open Actions and select the Deploy workflow.
+2) Click "Run workflow" and choose the branch.
+3) Observe the Deploy job logs for image builds and ECS updates.
 
 ## Expected outputs / pass-fail criteria
 

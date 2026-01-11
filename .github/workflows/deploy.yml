@@ -1,0 +1,143 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'eu-central-1' }}
+      ECS_CLUSTER: ${{ vars.ECS_CLUSTER || 'LIBRARY-ECS-CLUSTER' }}
+      ECS_SERVICE_COMMAND: ${{ vars.ECS_SERVICE_COMMAND }}
+      ECS_SERVICE_QUERY: ${{ vars.ECS_SERVICE_QUERY }}
+      ECR_REPO_COMMAND: ${{ vars.ECR_REPO_COMMAND }}
+      ECR_REPO_QUERY: ${{ vars.ECR_REPO_QUERY }}
+      ENABLE_LATEST_TAG: ${{ vars.ENABLE_LATEST_TAG || 'false' }}
+      AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Show Java and Maven versions
+        run: |
+          java -version
+          mvn -version
+
+      - name: Validate config
+        run: |
+          set -euo pipefail
+          missing=0
+          if [[ -z "${AWS_ROLE_TO_ASSUME}" ]]; then
+            echo "::error::Missing required secret AWS_ROLE_TO_ASSUME"
+            missing=1
+          fi
+          if [[ -z "${ECS_SERVICE_COMMAND}" ]]; then
+            echo "::error::Missing required var ECS_SERVICE_COMMAND"
+            missing=1
+          fi
+          if [[ -z "${ECS_SERVICE_QUERY}" ]]; then
+            echo "::error::Missing required var ECS_SERVICE_QUERY"
+            missing=1
+          fi
+          if [[ -z "${ECR_REPO_COMMAND}" ]]; then
+            echo "::error::Missing required var ECR_REPO_COMMAND"
+            missing=1
+          fi
+          if [[ -z "${ECR_REPO_QUERY}" ]]; then
+            echo "::error::Missing required var ECR_REPO_QUERY"
+            missing=1
+          fi
+          if [[ "$missing" -ne 0 ]]; then
+            exit 1
+          fi
+
+      # CD workflow skips tests to avoid duplicating CI; CI already runs mvn -U test.
+      - name: Build artifacts (skip tests)
+        run: mvn -DskipTests package
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push loan-command-service image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          set -euo pipefail
+          IMAGE_URI="${ECR_REGISTRY}/${ECR_REPO_COMMAND}:${GITHUB_SHA}"
+          docker build -f loan-command-service/Dockerfile -t "$IMAGE_URI" loan-command-service
+          docker push "$IMAGE_URI"
+          if [[ "${ENABLE_LATEST_TAG}" == "true" ]]; then
+            LATEST_URI="${ECR_REGISTRY}/${ECR_REPO_COMMAND}:latest"
+            docker tag "$IMAGE_URI" "$LATEST_URI"
+            docker push "$LATEST_URI"
+          fi
+
+      - name: Build and push loan-query-service image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          set -euo pipefail
+          IMAGE_URI="${ECR_REGISTRY}/${ECR_REPO_QUERY}:${GITHUB_SHA}"
+          docker build -f loan-query-service/Dockerfile -t "$IMAGE_URI" loan-query-service
+          docker push "$IMAGE_URI"
+          if [[ "${ENABLE_LATEST_TAG}" == "true" ]]; then
+            LATEST_URI="${ECR_REGISTRY}/${ECR_REPO_QUERY}:latest"
+            docker tag "$IMAGE_URI" "$LATEST_URI"
+            docker push "$LATEST_URI"
+          fi
+
+      - name: Render task definition (loan-command-service)
+        id: render-command
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ecs/taskdef-loan-command.json
+          container-name: loan-command
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPO_COMMAND }}:${{ github.sha }}
+
+      - name: Render task definition (loan-query-service)
+        id: render-query
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ecs/taskdef-loan-query.json
+          container-name: loan-query
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPO_QUERY }}:${{ github.sha }}
+
+      - name: Deploy loan-command-service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.render-command.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE_COMMAND }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+      - name: Deploy loan-query-service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.render-query.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE_QUERY }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
