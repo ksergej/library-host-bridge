@@ -101,6 +101,7 @@ codex.log
 *.local.properties
 *.secret
 *.secrets
+scripts/cicd/cicd.env
 
 ############################
 # Archives / dumps
