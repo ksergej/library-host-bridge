@@ -219,6 +219,22 @@ aws logs describe-log-groups --log-group-name-prefix "/ecs/" --region "$REGION" 
   - `gh auth login` → choose “Paste an authentication token”
 - Or via HTTPS `git push`:
   - GitHub will prompt for username + token as the password.
+  - Если нужно  сбросить сохранённые креды и сделать push заново:
+	
+```sh
+# 1.	Убедись, что remote на HTTPS:
+git remote -v
+
+# 2.	Сбрось сохранённые креды (универсально):
+git credential reject <<EOF
+protocol=https
+host=github.com
+EOF
+
+# 3.	Сделай push — Git снова спросит логин/пароль:
+git push
+
+``` 
 
 ### Common reasons it fails
 - **Branch protection** blocks direct pushes to `main` → use PR instead.
