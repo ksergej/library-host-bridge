@@ -182,3 +182,123 @@ aws logs describe-log-groups --log-group-name-prefix "/ecs/" --region "$REGION" 
   - SSM command Status is not Success.
   - curl returns non-2xx or times out.
   - ECS service never reaches stability within timeout.
+
+---
+
+
+
+# GitHub Actions CI — PAT configuration, bootstrap test, troubleshooting
+
+> This document is intended to be pasted into `docs/runbooks/CI_CD_SMOKE_TEST.md` as the “GitHub Actions CI bootstrap” section.
+
+---
+
+## 1) GitHub configuration: Personal Access Token (PAT) for creating/updating workflows
+
+**Goal:** be able to create and update workflow files under `.github/workflows/*.yml` and push them to the repository.
+
+### Option A — Classic PAT (simple)
+1. GitHub → **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)** → **Generate new token**
+2. Recommended scopes:
+   - `repo` (required for push/PR in private repositories)
+   - `workflow` (required to create/update workflow files)
+3. Store the token securely (password manager).
+
+### Option B — Fine-grained PAT (preferred for least privilege)
+1. GitHub → **Settings** → **Developer settings** → **Personal access tokens** → **Fine-grained tokens**
+2. Restrict:
+   - **Repository access**: only this repository
+3. Minimum permissions:
+   - **Contents**: Read and write
+   - **Workflows**: Read and write
+   - **Metadata**: Read (usually enabled by default)
+   - (Optional) **Pull requests**: Read and write (if you manage PRs via CLI)
+
+### Using PAT locally on macOS
+- Via **GitHub CLI** (recommended):
+  - `gh auth login` → choose “Paste an authentication token”
+- Or via HTTPS `git push`:
+  - GitHub will prompt for username + token as the password.
+
+### Common reasons it fails
+- **Branch protection** blocks direct pushes to `main` → use PR instead.
+- PAT lacks **Workflows: write** (fine-grained) or missing `workflow` scope (classic).
+- Token is not granted access to the target repository (fine-grained repo selection).
+
+---
+
+## 2) Bootstrap test: verify GitHub access + CI pipeline
+
+**Goal:** confirm (a) repo access works, (b) CI workflow triggers and runs successfully.
+
+### Option A — PR-based (most realistic)
+1. Create a test branch:
+   - `git checkout -b test/ci-bootstrap`
+2. Make a harmless change:
+   - `echo "ci bootstrap $(date)" > .ci_bootstrap`
+   - `git add .ci_bootstrap && git commit -m "ci: bootstrap test"`
+3. Push the branch:
+   - `git push -u origin test/ci-bootstrap`
+4. Open a PR on GitHub and verify the **CI** workflow starts automatically.
+5. **PASS criteria:**
+   - PR → **Checks** shows the CI job green (success, `mvn -U test`).
+
+### Option B — GitHub CLI checks (token + runs)
+> Requires GitHub CLI (`gh`) installed.
+
+1. Authenticate using the token:
+   - `gh auth login`
+2. Verify repository access:
+   - `gh repo view --web` (opens the repo in browser)
+3. List workflows:
+   - `gh workflow list`
+4. If your CI workflow supports manual runs (`workflow_dispatch`), trigger it:
+   - `gh workflow run ci.yml`
+   - `gh run list --limit 5`
+5. **PASS criteria:**
+   - A run appears, logs are available, and status is `success`.
+
+---
+
+## 3) Troubleshooting: CI workflow does not trigger or fails
+
+### CI doesn’t trigger at all
+1. **Wrong trigger conditions**
+   - Check `.github/workflows/ci.yml` has:
+     - `on: pull_request:` and/or `on: push:`
+   - Ensure there are no unexpected `paths:` filters blocking runs.
+
+2. **Workflow file not on default branch**
+   - GitHub runs workflows from the branch that contains the workflow file.
+   - For PR checks, ensure the PR branch includes `.github/workflows/ci.yml`.
+
+3. **Branch protection / permissions**
+   - If direct push to `main` is blocked, pushes to feature branches should still trigger.
+   - If you’re pushing to a fork, verify Actions are enabled for that fork.
+
+4. **Repository settings**
+   - GitHub → Repo → **Settings** → **Actions**
+     - Ensure Actions are enabled.
+     - Ensure the selected permissions allow workflow runs.
+
+### CI starts but fails
+1. **Java version mismatch**
+   - Confirm `actions/setup-java` uses the project’s supported Java version.
+   - Check logs for `UnsupportedClassVersionError` or toolchain errors.
+
+2. **Maven cache issues**
+   - If dependency resolution behaves strangely, re-run without cache or adjust caching strategy.
+
+3. **Tests flaky or environment-dependent**
+   - Identify tests requiring external services.
+   - Convert them to integration tests behind a profile, or mock where appropriate.
+
+### Quick “sanity” checks (local)
+- Verify you can run the same command locally from repo root:
+  - `mvn -U test`
+
+### Where to look in GitHub
+- PR → **Checks** (best for PR-triggered runs)
+- GitHub → Repo → **Actions** → open the latest run → inspect job logs
+
+---
