@@ -368,6 +368,35 @@ CloudWatch Logs hints (if configured in task definitions):
 aws logs describe-log-groups --log-group-name-prefix "/ecs/" --region "$REGION" --output table
 ```
 
+## IAM: Deploy role policy (least privilege)
+
+Policy location:
+- `infra/iam/github-oidc-deploy-policy.json`
+
+Create and attach the policy to the deploy role (`github-oidc-deploy`):
+
+```bash
+# Create the customer-managed policy from the JSON document
+aws iam create-policy --policy-name "github-oidc-deploy" --policy-document file://infra/iam/github-oidc-deploy-policy.json
+# Get the policy ARN (used for attach/verify)
+aws iam list-policies --scope Local --query "Policies[?PolicyName=='github-oidc-deploy'].Arn|[0]" --output text
+# Attach the policy to the GitHub OIDC deploy role
+aws iam attach-role-policy --role-name "github-oidc-deploy" --policy-arn "<POLICY_ARN>"
+# Verify the policy is attached to the deploy role
+aws iam list-attached-role-policies --role-name "github-oidc-deploy" --output table
+```
+
+Common failure modes and fixes:
+- `AccessDenied: ecr:GetAuthorizationToken`:
+  - Ensure the policy is attached to the deploy role and the workflow assumes the correct role.
+- `AccessDenied: iam:PassRole`:
+  - Ensure `executionRoleArn`/`taskRoleArn` in task definitions match the PassRole resources.
+  - Do not widen to `*`; update the policy to the exact role ARNs.
+- `AccessDenied: ecs:UpdateService`:
+  - Ensure `ECS_SERVICE_COMMAND`/`ECS_SERVICE_QUERY` and cluster name match the service ARNs in the policy.
+
+If you change repo/service names or role ARNs, update the policy JSON accordingly.
+
 ## How to manually trigger deploy (workflow_dispatch)
 
 1) In GitHub, open Actions and select the Deploy workflow.
