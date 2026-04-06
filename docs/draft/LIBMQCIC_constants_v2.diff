@@ -1,0 +1,21 @@
+--- LIBMQCIC.cbl
++++ LIBMQCIC_constants_v2.cbl
+@@ -39,9 +39,15 @@
+        01  MQM-PUT-MESSAGE-OPTIONS.
+            COPY CMQPMOV.
+ 
+-       01  WS-QMGR-NAME       PIC X(48) VALUE SPACES.
+-       01  WS-REQ-QUEUE       PIC X(48) VALUE 'LIB.REQ.TEST'.
+-       01  WS-REP-QUEUE       PIC X(48) VALUE 'LIB.REP.TEST'.
++       01  WS-QMGR-NAME       PIC X(48) VALUE 'CSQ9'.
++       01  WS-REQ-QUEUE       PIC X(48) VALUE 'Z88011.MQZ3.QLOCAL'.
++       01  WS-REP-QUEUE       PIC X(48) VALUE 'Z88011.MQZ3.REPLYTO.QLOCAL'.
++
++      * MQ names (MVP: constants; derived from prior batch PARAMS DD)
++      *   QMGR=CSQ9
++      *   REQ =Z88011.MQZ3.QLOCAL
++      *   RPLY=Z88011.MQZ3.REPLYTO.QLOCAL
++      * Replace with TSQ/VSAM/COMMAREA config later.
+        01  WS-WAIT-MS-DISP    PIC 9(9)   VALUE 0.
+        01  WS-WAIT-VAL-STR    PIC X(9).
+        01  WS-WAIT-LEN        PIC S9(4) COMP.

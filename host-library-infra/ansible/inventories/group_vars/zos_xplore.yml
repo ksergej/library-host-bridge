@@ -61,3 +61,7 @@ le:
   runlib: "CEE.SCEERUN"
   runlib2: "CEE.SCEERUN2"
   linklib: "CEE.SCEELKED"
+
+cics:
+  copylib: "CICSTS62.CICS.SDFHCOB"  # placeholder CICS COBOL copybook library
+  loadlib: "CICSTS62.CICS.SDFHLOAD" # placeholder CICS runtime/link-edit library

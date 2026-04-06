@@ -161,6 +161,23 @@ Integration tests (Failsafe):
 
 Not configured yet.
 
+Host automation commands:
+
+```
+ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
+  host-library-infra/ansible/playbooks/library_deploy.yml
+```
+
+```
+ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
+  host-library-infra/ansible/playbooks/compile_host.yml
+```
+
+```
+ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
+  host-library-infra/ansible/playbooks/run_host.yml
+```
+
 ## Smoke Scenarios
 
 ### loan-command-service

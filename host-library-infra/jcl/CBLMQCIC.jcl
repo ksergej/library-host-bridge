@@ -1,0 +1,69 @@
+//CBLMQCIC JOB 1,NOTIFY=&SYSUID,CLASS=A,MSGCLASS=H,TIME=1440
+//********************************************************************
+//* Compile + Link-edit + Bind (DB2) for CICS COBOL MQ program
+//* Customize placeholders before use.
+//********************************************************************
+// SET MBR=LIBMQCIC
+//********************************************************************
+//*  COMPILE - COBOL + embedded SQL + CICS
+//********************************************************************
+//COBOL    EXEC PGM=IGYCRCTL,REGION=0M,PARM='SQL,CICS'
+//STEPLIB  DD  DSN=YOUR.COBOL.COMPILER.LOADLIB,DISP=SHR
+//         DD  DSN=YOUR.DB2.EXITLIB,DISP=SHR
+//         DD  DSN=YOUR.DB2.SDSNLOAD,DISP=SHR
+//         DD  DSN=CEE.SCEERUN,DISP=SHR
+//         DD  DSN=CEE.SCEERUN2,DISP=SHR
+//SYSIN    DD  DISP=SHR,DSN=&SYSUID..CBL(&MBR)
+//DBRMLIB  DD  DISP=SHR,DSN=&SYSUID..DBRMLIB(&MBR)
+//SYSLIB   DD  DSN=YOUR.MQ.COPYLIB,DISP=SHR
+//         DD  DSN=YOUR.CICS.COPYLIB,DISP=SHR
+//         DD  DSN=&SYSUID..CBL,DISP=SHR
+//SYSPRINT DD  SYSOUT=*
+//SYSLIN   DD  DSN=&&LOADSET,UNIT=SYSALLDA,
+//             DISP=(MOD,PASS),SPACE=(CYL,(1,1))
+//SYSUT1   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT2   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT3   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT4   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT5   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT6   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT7   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT8   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT9   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT10  DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT11  DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT12  DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT13  DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT14  DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT15  DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSMDECK DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//********************************************************************
+//* LINK-EDIT
+//********************************************************************
+//LKED     EXEC PGM=IEWBLINK,COND=(8,LT,COBOL),REGION=0M
+//SYSLIB   DD  DSN=CEE.SCEELKED,DISP=SHR
+//         DD  DSN=YOUR.DB2.SDSNLOAD,DISP=SHR
+//         DD  DSN=YOUR.MQ.LOADLIB,DISP=SHR
+//         DD  DSN=YOUR.CICS.LOADLIB,DISP=SHR
+//SYSPRINT DD  SYSOUT=*
+//SYSUT1   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSLIN   DD  DSN=&&LOADSET,DISP=(OLD,DELETE)
+//         DD  *
+  INCLUDE SYSLIB(CSQBSTUB)
+  ENTRY  LIBMQCIC
+  NAME   LIBMQCIC(R)
+/*
+//SYSLMOD  DD  DSN=&SYSUID..LOAD(&MBR),DISP=SHR
+//********************************************************************
+//* BIND DB2 PACKAGE
+//********************************************************************
+//BIND     EXEC PGM=IKJEFT01,COND=(8,LT,LKED)
+//STEPLIB  DD DSN=YOUR.DB2.SDSNLOAD,DISP=SHR
+//DBRMLIB  DD DSN=&SYSUID..DBRMLIB,DISP=SHR
+//SYSUDUMP DD DUMMY
+//SYSTSPRT DD SYSOUT=*
+//SYSPRINT DD SYSOUT=*
+//SYSTSIN  DD *,SYMBOLS=EXECSYS
+ DSN SYSTEM(YOURDB2)
+ BIND PACKAGE(&SYSUID) MEMBER(LIBMQCIC) ACT(REP) ISO(CS) ENCODING(EBCDIC)
+/*

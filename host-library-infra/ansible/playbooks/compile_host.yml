@@ -1,11 +1,13 @@
 ---
-- name: Compile (and optionally bind) LIBMQTST
+- name: Compile (and bind) host programs
   hosts: zos_xplore
   gather_facts: no
 
   vars:
     jcl_pds: "{{ hlq }}.JCL"
-    compile_member: "CBLMQDB2"
+    compile_members:
+      - "CBLMQDB2"
+      - "CBLMQCIC"
     max_rc: 8
 
   environment: "{{ environment_vars }}"
@@ -14,14 +16,17 @@
     - ibm.ibm_zos_core
 
   tasks:
-    - name: Submit compile+link+bind job {{ compile_member }}
+    - name: Submit compile+link+bind jobs
       zos_job_submit:
-        src: "{{ jcl_pds }}({{ compile_member }})"
+        src: "{{ jcl_pds }}({{ item }})"
         location: data_set
         wait_time_s: 300
         return_output: true
       register: compile_job
       failed_when: compile_job.jobs[0].ret_code.code|int > max_rc
+      loop: "{{ compile_members }}"
 
-    - debug:
-        msg: "Compile RC={{ compile_job.jobs[0].ret_code.msg }}"
+    - name: Show compile RCs
+      debug:
+        msg: "{{ item.item }} RC={{ item.jobs[0].ret_code.msg }}"
+      loop: "{{ compile_job.results }}"

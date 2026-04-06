@@ -2,7 +2,7 @@
 
 Host-side infrastructure for the "Library System" demo:
 
-- COBOL MQ test program (LIBMQTST)
+- COBOL MQ host programs (batch + CICS variant)
 - JCL for compile/run and tests
 - DB2 schema and testdata
 - Ansible playbooks for deploy and tests on IBM Z (XPlore-compatible)
@@ -10,11 +10,14 @@ Host-side infrastructure for the "Library System" demo:
 ## Layout
 
 cobol/
-  LIBMQTST.cbl        - MQ echo program with CorrelationId handling
+  LIBMQTST.cbl        - Batch MQ+DB2 host bridge (current baseline)
+  LIBMQCIC.cbl        - CICS-oriented MQ+DB2 host bridge (parallel track)
+  LIBLOAN.cpy         - Shared host payload copybook
 
 jcl/
-  LIBMQTSTC.jcl       - Compile+link job (template, customize DSNs)
-  LIBMQTST.jcl        - Simple run job (template)
+  CBLMQDB2.jcl        - Compile+link+bind for LIBMQTST
+  CBLMQCIC.jcl        - Compile+link+bind for LIBMQCIC
+  LIBMQTST.jcl        - Run LIBMQTST (batch/manual smoke)
   test/LIBTEST01.jcl  - Example test job
 
 db2/
@@ -29,7 +32,9 @@ ansible/
   inventories/group_vars/all.yml
   playbooks/
     smoke.yml         - connectivity + Python/ZOAU check
-    library_deploy.yml- PDS, upload COBOL/JCL, compile, run
+    library_deploy.yml- upload COBOL/JCL/SQL (both host programs)
+    compile_host.yml  - submit CBLMQDB2 + CBLMQCIC
+    run_host.yml      - submit LIBMQRUN (batch LIBMQTST)
     db2_schema.yml    - upload + submit DB2 schema/data jobs
     library_tests.yml - submit test job
 

@@ -128,11 +128,25 @@ Expected behavior:
 
 Host assets live under `host-library-infra/` (COBOL, JCL, DB2, Ansible).
 
+Current host programs:
+- `LIBMQTST` (batch baseline)
+- `LIBMQCIC` (parallel CICS-oriented program)
+
 Run Ansible smoke from repo root:
 
 ```
 ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
   host-library-infra/ansible/playbooks/smoke.yml
+```
+
+Deploy-only + compile-only sequence:
+
+```
+ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
+  host-library-infra/ansible/playbooks/library_deploy.yml
+
+ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
+  host-library-infra/ansible/playbooks/compile_host.yml
 ```
 
 Fill placeholders in `host-library-infra/ansible/inventories/group_vars/zos_xplore.yml` before running on IBM Z XPlore.

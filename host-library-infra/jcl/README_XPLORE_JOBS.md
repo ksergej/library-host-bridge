@@ -3,6 +3,8 @@
 Purpose of jobs:
 - `LIBSCHEMA.jcl` — create DB2 schema/tables for LIBRARY using DSNTEP2 and SQL from `host-library-infra/db2/schema.sql`.
 - `LIBDATA.jcl` — load test data into the schema using DSNTEP2 and SQL from `host-library-infra/db2/testdata.sql`.
+- `CBLMQDB2.jcl` — compile/link/bind batch host program `LIBMQTST`.
+- `CBLMQCIC.jcl` — compile/link/bind CICS host program `LIBMQCIC`.
 - `LIBMQTST.jcl` — run MQ/COBOL test program `LIBMQTST` (request/reply echo).
 
 Placeholders / symbols:
@@ -18,7 +20,8 @@ Run order (expected RC=0):
 1) `LIBSCHEM` member (schema)
 2) `LIBDATA.jcl`
 3) `CBLMQDB2` member (compile + link-edit + DB2 bind for `LIBMQTST`)
-4) `LIBMQRUN` member (runs `LIBMQTST`)
+4) `CBLMQCIC` member (compile + link-edit + DB2 bind for `LIBMQCIC`)
+5) `LIBMQTST` member (runs `LIBMQTST`)
 
 Notes:
 - SQL sources reside under `host-library-infra/db2/` — copy/paste into SYSIN or upload to a dataset before running the JCL (Ansible playbooks place them into {{ hlq }}.SQL members).
@@ -29,3 +32,4 @@ Notes:
 - `LIBMQTST` now expects structured borrow payload (HOST-BORROW-REQUEST), checks DB2 LOAN for active loans, inserts a new loan when available, and returns HOST-BORROW-RESPONSE with `STATUS-CODE` (`OK`/`BUSY`/`ERR`) and `MESSAGE`.
 - LIBMQTST now transforms MQ XML ↔ copybook internally (XML per `library-loan.xsd`; copybook in `LIBLOAN.cpy`), keeps CorrelId=MsgId in MQMD.
 - LOAN_ID_NUM is a DB2 identity; COBOL derives external loan id as `L` + zero-padded number (CHAR(10)) and returns it in the reply (LOAN_ID not stored; see view V_LOAN for debugging). CorrelationId remains in MQMD (CorrelId = MsgId).
+- `LIBMQCIC` is kept in parallel to `LIBMQTST` and is intended for CICS transaction startup (`LIBT`) and CKTI-triggered evolution in Flow-01.

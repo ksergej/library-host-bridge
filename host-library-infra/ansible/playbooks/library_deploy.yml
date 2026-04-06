@@ -1,12 +1,10 @@
 ---
-- name: Deploy LIBMQTST COBOL + JCL
+- name: Deploy host COBOL programs + JCL
   hosts: zos_xplore
   gather_facts: no
 
   vars:
     ansible_connection: ssh
-
-    host_program_member: "LIBMQTST"
 
     cobol_pds: "{{ hlq }}.CBL"
     cbl_pds: "{{ cobol_pds }}"
@@ -16,7 +14,18 @@
     sql_pds:   "{{ hlq }}.SQL"
 
     rendered_dir: "{{ playbook_dir }}/../.ansible_tmp/rendered"
-    rendered_cblmqdb2_jcl: "{{ rendered_dir }}/CBLMQDB2.jcl"
+    host_programs:
+      - member: "LIBMQTST"
+        src: "LIBMQTST.cbl"
+      - member: "LIBMQCIC"
+        src: "LIBMQCIC.cbl"
+    compile_jobs:
+      - member: "CBLMQDB2"
+        template: "CBLMQDB2.jcl.j2"
+        host_program_member: "LIBMQTST"
+      - member: "CBLMQCIC"
+        template: "CBLMQCIC.jcl.j2"
+        host_program_member: "LIBMQCIC"
 
   environment: "{{ environment_vars }}"
 
@@ -88,14 +97,15 @@
         space_secondary: 5
         space_type: cyl
 
-    - name: Upload COBOL program LIBMQTST
+    - name: Upload COBOL programs
       zos_copy:
-        src: "{{ playbook_dir }}/../../cobol/LIBMQTST.cbl"
-        dest: "{{ cobol_pds }}(LIBMQTST)"
+        src: "{{ playbook_dir }}/../../cobol/{{ item.src }}"
+        dest: "{{ cobol_pds }}({{ item.member }})"
         force: true
         encoding:
           from: ISO8859-1
           to: IBM-1047
+      loop: "{{ host_programs }}"
       tags: [cobol, copy, source]
 
     - name: Upload COBOL copybook LIBLOAN
@@ -117,17 +127,20 @@
       vars:
         ansible_connection: local
 
-    - name: Render canonical compile+link+bind JCL locally (CBLMQDB2)
+    - name: Render canonical compile+link+bind JCL locally
       ansible.builtin.template:
-        src: "{{ playbook_dir }}/../templates/jcl/CBLMQDB2.jcl.j2"
-        dest: "{{ rendered_cblmqdb2_jcl }}"
+        src: "{{ playbook_dir }}/../templates/jcl/{{ item.template }}"
+        dest: "{{ rendered_dir }}/{{ item.member }}.jcl"
       delegate_to: localhost
       run_once: true
       vars:
         ansible_connection: local
+        host_program_member: "{{ item.host_program_member }}"
+        compile_member: "{{ item.member }}"
+      loop: "{{ compile_jobs }}"
 
-    - name: Assert rendered CBLMQDB2 JCL has no unresolved Jinja markers
-      ansible.builtin.command: "grep -n \"{{ jinja_open }}\" \"{{ rendered_cblmqdb2_jcl }}\""
+    - name: Assert rendered compile JCL has no unresolved Jinja markers
+      ansible.builtin.command: "grep -n \"{{ jinja_open }}\" \"{{ rendered_dir }}/{{ item.member }}.jcl\""
       register: jinja_marker_check
       changed_when: false
       failed_when: jinja_marker_check.rc == 0
@@ -136,15 +149,17 @@
       vars:
         jinja_open: "{{ '{{' }}"
         ansible_connection: local
+      loop: "{{ compile_jobs }}"
 
-    - name: Upload canonical compile+link+bind JCL member CBLMQDB2
+    - name: Upload canonical compile+link+bind JCL members
       zos_copy:
-        src: "{{ rendered_cblmqdb2_jcl }}"
-        dest: "{{ jcl_pds }}(CBLMQDB2)"
+        src: "{{ rendered_dir }}/{{ item.member }}.jcl"
+        dest: "{{ jcl_pds }}({{ item.member }})"
         force: true
         encoding:
           from: ISO8859-1
           to: IBM-1047
+      loop: "{{ compile_jobs }}"
       tags: [jcltst]
 
     - name: Upload run JCL LIBMQTST

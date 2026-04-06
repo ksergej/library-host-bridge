@@ -1,10 +1,11 @@
 ---
-- name: Run host job LIBMQRUN
+- name: Run host job (batch program)
   hosts: zos_xplore
   gather_facts: false
 
   vars:
     jcl_pds: "{{ hlq }}.JCL"
+    run_member: "LIBMQTST"
     max_rc_run: 0
 
   environment: "{{ environment_vars }}"
@@ -13,9 +14,9 @@
     - ibm.ibm_zos_core
 
   tasks:
-    - name: Submit run job LIBMQRUN
+    - name: Submit run job {{ run_member }}
       zos_job_submit:
-        src: "{{ jcl_pds }}(LIBMQRUN)"
+        src: "{{ jcl_pds }}({{ run_member }})"
         location: data_set
         wait_time_s: 300
         return_output: true
