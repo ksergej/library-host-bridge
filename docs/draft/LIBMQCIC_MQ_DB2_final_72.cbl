@@ -91,14 +91,14 @@ CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
        01  WS-TAG-LOANID-ST     PIC X(8)  VALUE '<loanId>'.
        01  WS-TAG-LOANID-END    PIC X(9)  VALUE '</loanId>'.
 
-           EXEC SQL
+       EXEC SQL
             DECLARE CUR-ACTIVE-LOANS CURSOR FOR
                 SELECT LOAN_ID_NUM, BOOK_ID
                   FROM LOAN
                  WHERE USER_ID = :WS-USER-ID
                    AND RETURN_DATE IS NULL
                  ORDER BY LOAN_ID_NUM
-           END-EXEC.
+       END-EXEC.
 
        PROCEDURE DIVISION.
 

@@ -13,6 +13,31 @@ This runbook targets developers running real host smoke/integration tests agains
    - `LIBMQTST` via `CBLMQDB2`
    - `LIBMQCIC` via `CBLMQCIC`
 
+## Host Access Configuration
+
+Current access setup (key-based SSH):
+
+- Host/IP is configured in `host-library-infra/ansible/inventories/hosts.yml` (`ansible_host`).
+- User and SSH key are configured in `host-library-infra/ansible/inventories/group_vars/zos_xplore.yml`:
+  - `ansible_user`
+  - `ansible_ssh_private_key_file`
+  - `ansible_port`
+
+Password-based variant (if key auth is unavailable):
+
+- In `host-library-infra/ansible/inventories/group_vars/zos_xplore.yml`, set:
+  - `ansible_user: "<user>"`
+  - `ansible_password: "<password>"`
+- Remove/comment `ansible_ssh_private_key_file` for that run profile.
+- Recommended: store password via Ansible Vault, not plaintext in git.
+- Optional interactive mode:
+
+```
+ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
+  host-library-infra/ansible/playbooks/library_deploy.yml \
+  --ask-pass
+```
+
 ## Host Compile/Deploy (Ansible)
 
 From repo root:
@@ -20,6 +45,14 @@ From repo root:
 ```
 ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
   host-library-infra/ansible/playbooks/library_deploy.yml
+```
+
+Deploy only COBOL-tagged tasks:
+
+```
+ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
+  host-library-infra/ansible/playbooks/library_deploy.yml \
+  --tags cobol
 ```
 
 ```

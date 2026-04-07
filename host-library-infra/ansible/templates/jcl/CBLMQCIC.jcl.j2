@@ -1,19 +1,32 @@
-//CBLMQCIC JOB 1,NOTIFY=&SYSUID,CLASS=A,MSGCLASS=H,TIME=1440
-//********************************************************************
+//{{ compile_member }} JOB 1,NOTIFY=&SYSUID,CLASS=A,MSGCLASS=H,TIME=1440
+//*-------------------------------------------------------------------*
 //* Compile + Link-edit + Bind (DB2) for CICS COBOL MQ program
-//* Variables are injected by Ansible/Jinja2.
-//********************************************************************
-//* COBOL compile with CICS option for EXEC CICS statements
-//COBOL    EXEC PGM=IGYCRCTL,REGION=0M,PARM='SQL,CICS'
+//* Target program: {{ host_program_member }}
+//* Variant: external CICS translator DFHECP1$ (no DFHAPIR dependency)
+//*-------------------------------------------------------------------*
+//*-------------------------------------------------------------------*
+//* 1) CICS TRANSLATION (EXEC CICS -> COBOL)
+//*-------------------------------------------------------------------*
+//TRANSL   EXEC PGM=DFHECP1$,REGION=0M
+//STEPLIB  DD  DSN={{ cics.loadlib }},DISP=SHR
+//SYSPRINT DD  SYSOUT=*
+//SYSPUNCH DD  DSN=&&CICSTRN,UNIT=SYSALLDA,DISP=(,PASS),
+//             SPACE=(CYL,(1,1))
+//SYSIN    DD  DISP=SHR,DSN={{ cbl_pds }}({{ host_program_member }})
+//SYSUT1   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT2   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//*-------------------------------------------------------------------*
+//* 2) COBOL COMPILE + DB2 SQL (translated source as SYSIN)
+//*-------------------------------------------------------------------*
+//COBOL    EXEC PGM=IGYCRCTL,REGION=0M,PARM='SQL'
 //STEPLIB  DD  DSN={{ cobol.compiler_loadlib }},DISP=SHR
 //         DD  DSN={{ db2.exitlib }},DISP=SHR
 //         DD  DSN={{ db2.loadlib }},DISP=SHR
 //         DD  DSN={{ le.runlib }},DISP=SHR
 //         DD  DSN={{ le.runlib2 }},DISP=SHR
-//SYSIN    DD  DISP=SHR,DSN={{ cbl_pds }}({{ host_program_member }})
+//SYSIN    DD  DSN=&&CICSTRN,DISP=(OLD,DELETE)
 //DBRMLIB  DD  DISP=SHR,DSN={{ db2.dbrmlib }}({{ host_program_member }})
 //SYSLIB   DD  DSN={{ mq.cobcopylib }},DISP=SHR
-//         DD  DSN={{ cics.copylib }},DISP=SHR
 //         DD  DSN={{ cbl_pds }},DISP=SHR
 //SYSPRINT DD  SYSOUT=*
 //SYSLIN   DD  DSN=&&LOADSET,UNIT=SYSALLDA,
@@ -34,34 +47,38 @@
 //SYSUT14  DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
 //SYSUT15  DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
 //SYSMDECK DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
-//********************************************************************
-//* LINK-EDIT
-//********************************************************************
-//LKED     EXEC PGM=IEWBLINK,COND=(8,LT,COBOL),REGION=0M
+//*-------------------------------------------------------------------*
+//* 3) LINK-EDIT (CICS + DB2 + MQ)
+//*-------------------------------------------------------------------*
+//LKED     EXEC PGM=IEWBLINK,REGION=0M,PARM='LIST,LET,MAP'
 //SYSLIB   DD  DSN={{ le.linklib }},DISP=SHR
 //         DD  DSN={{ db2.loadlib }},DISP=SHR
-//         DD  DSN={{ mq.loadlib }},DISP=SHR
-//         DD  DSN={{ cics.loadlib }},DISP=SHR
+//CICSLIB  DD  DSN={{ cics.loadlib }},DISP=SHR
+//MQLIB    DD  DSN={{ mq.loadlib }},DISP=SHR
 //SYSPRINT DD  SYSOUT=*
 //SYSUT1   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSLMOD  DD  DSN={{ load_pds }}({{ host_program_member }}),DISP=SHR
 //SYSLIN   DD  DSN=&&LOADSET,DISP=(OLD,DELETE)
 //         DD  *
-  INCLUDE SYSLIB(CSQBSTUB)
+  INCLUDE CICSLIB(DFHELII)
+  INCLUDE CICSLIB(DSNCLI)
+  INCLUDE MQLIB(CSQCSTUB)
   ENTRY  {{ host_program_member }}
   NAME   {{ host_program_member }}(R)
 /*
-//SYSLMOD  DD  DSN={{ load_pds }}({{ host_program_member }}),DISP=SHR
-//********************************************************************
-//* BIND DB2 PACKAGE
-//********************************************************************
+//*-------------------------------------------------------------------*
+//* 4) BIND DB2 PACKAGE
+//*-------------------------------------------------------------------*
 //BIND     EXEC PGM=IKJEFT01,COND=(8,LT,LKED)
-//STEPLIB  DD  DSN={{ db2.loadlib }},DISP=SHR
-//DBRMLIB  DD  DSN={{ db2.dbrmlib }},DISP=SHR
+//STEPLIB  DD  DSN={{ db2.exitlib }},DISP=SHR
+//         DD  DSN={{ db2.loadlib }},DISP=SHR
+//DBRMLIB  DD  DSN={{ db2.dbrmlib }}({{ host_program_member }}),DISP=SHR
 //SYSUDUMP DD  DUMMY
 //SYSTSPRT DD  SYSOUT=*
 //SYSPRINT DD  SYSOUT=*
-//SYSTSIN  DD  *,SYMBOLS=EXECSYS
- DSN SYSTEM({{ db2.subsystem }})
- BIND PACKAGE({{ hlq }}) MEMBER({{ host_program_member }}) ACT(REP) -
-      ISO(CS) ENCODING(EBCDIC)
-/*
+//SYSTSIN  DD  *
+  DSN SYSTEM({{ db2.subsystem }})
+  BIND PACKAGE(DSN_DEFAULT_COLLID_{{ hlq }}) MEMBER({{ host_program_member }}) -
+       OWNER({{ hlq }}) QUALIFIER({{ db2.qualifier }}) -
+       ACTION(REPLACE) ISOLATION(CS) ENCODING(EBCDIC) -
+       VALIDATE(BIND) RELEASE(COMMIT)

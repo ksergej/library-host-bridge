@@ -267,4 +267,174 @@ Fix:
 •	или через PLTPI/PLT (ваши стартовые процедуры),
 •	или через CPSM/BAS (если используется).
 
-Поэтому у тебя и получается: после рестарта LIBT не доступна, пока ты не сделаешь CEDA INSTALL GROUP(Z88011).
+Поэтому у тебя и получается: после рестарта LIBT не доступна, пока ты не сделаешь 
+CEDA INSTALL GROUP(Z88011)
+CEMT SET MQCONN CONNECTED
+SET MQCONN CONNECTED
+
+---
+DB2-Teil 1:
+
+CEDA DEF DB2CONN(DB2C) GROUP(Z88011)
+
+CEMT SET DB2CONN DB2ID(DBDG)
+CEMT I DB2CONN
+CEMT SET DB2CONN CONNECTED
+CEMT I DB2CONN
+
+
+
+1) DB2CONN (проверка базы)
+
+Раз у тебя “DB2CONN - connected”, значит база поднята.
+
+Минимально проверь:
+•	CEDA INQUIRE DB2CONN
+•	или CEMT INQUIRE DB2CONN (если доступно)
+
+Важно: если DB2CONN не ENABLED/CONNECTED — DB2TRAN/DB2ENTRY не помогут.
+
+⸻
+
+2) DB2ENTRY — “пул потоков + какой PLAN/AUTHID использовать”
+
+DB2ENTRY определяет:
+•	какой PLAN использовать
+•	какой AUTHID (если надо)
+•	сколько threads (пул)
+•	какие лимиты/поведение
+
+Вариант через CEDA (интерактивно)
+
+Пример логики (имена подставь свои):
+
+CEDA DEFINE DB2ENTRY(Z88011E) GROUP(Z88011)
+PLAN(Z88011)
+AUTHID(Z88011)        (если требуется)
+THREADLIMIT(10)
+THREADWAIT(YES)
+PROTECTNUM(0)
+ACCOUNTREC(NONE)
+
+Потом:
+
+CEDA INSTALL DB2ENTRY(Z88011E) GROUP(Z88011)
+CEDA SET DB2ENTRY(Z88011E) ENABLED
+
+
+Что важно:
+•	PLAN(Z88011) — это тот план, где PKLIST включает DSN_DEFAULT_COLLID_Z88011.*
+•	AUTHID — зависит от вашей безопасности. Часто достаточно дефолтного/пользовательского, но иногда надо задавать явно.
+
+⸻
+
+3) DB2TRAN — “какая транзакция CICS идёт в какой DB2ENTRY”
+
+DB2TRAN — это правило маршрутизации:
+
+TRANID (LIBT) → DB2ENTRY (Z88011E)
+
+Через CEDA
+
+CEDA DEFINE DB2TRAN(LIBT) GROUP(Z88011)
+TRANSID(LIBT)
+ENTRYNAME(Z88011E)
+
+Потом:
+
+CEDA INSTALL DB2TRAN(LIBT) GROUP(Z88011)
+CEDA SET DB2TRAN(LIBT) ENABLED
+
+
+
+
+------------------------
+
+1) Что у тебя сейчас есть (важное)
+   •	Package успешно создан: ZXPDB2.DSN_DEFAULT_COLLID_Z88011.LIBMQCIC (это collection-id = DSN_DEFAULT_COLLID_Z88011).
+   •	Для CICS тебе нужен PLAN (у тебя это Z88011), который использует packages (через PKLIST(...)), и CICS должен запускать SQL под этим планом через DB2ENTRY/DB2TRAN.
+
+⸻
+
+2) DB2ENTRY: где задаётся PLAN (и thread pool)
+
+DB2ENTRY — это “пул потоков + план/авторизация”, который будет использоваться для DB2-работы из CICS.
+
+Минимально правильная идея
+•	DB2ENTRY(Z88011E)
+•	PLAN(Z88011)  ← вот сюда
+•	(опционально) AUTHID(...) / THREADLIMIT(...) / PRIORITY(...) / PROTECTNUM(...) и т.д.
+
+Пример через CEDA (concept)
+
+CEDA DEFINE DB2ENTRY(Z88011E) GROUP(Z88011)
+•	PLAN = Z88011
+•	THREADLIMIT = например 10 (или как тебе нужно)
+•	PROTECTNUM = 0.. (по ситуации)
+•	AUTHID — если хочешь фиксированный authid для SQL (часто оставляют по умолчанию и управляют через signon / attach policies, зависит от политики безопасности).
+
+Проверка потом:
+•	CEMT I DB2ENTRY(Z88011E) — убедиться что ENABLED, и PLAN действительно Z88011.
+
+⸻
+
+3) DB2TRAN: маппинг “транзакция → DB2ENTRY”
+
+DB2TRAN — это правило маршрутизации: какая CICS транзакция использует какой DB2ENTRY.
+
+Ты уже сделал правильно:
+
+CEDA DEFINE DB2TRAN(LIBT) GROUP(Z88011)
+•	TRANSID = LIBT
+•	ENTRY   = Z88011E
+
+Проверка:
+•	CEMT I DB2TRAN(LIBT)
+
+⸻
+
+4) DB2CONN: должен быть CONNECTED (у тебя уже)
+
+DB2CONN — это глобальная связь региона CICS с конкретным DB2 subsystem (DBDG) + общие параметры.
+
+Проверка:
+•	CEMT I DB2CONN → Connected
+•	там же видно DB2ID(DBDG) и статус.
+
+⸻
+
+7) Что сделать прямо сейчас (короткий чеклист)
+    1.	Убедиться что package есть:
+          •	-DISPLAY PACKAGE(...) (если есть доступ) или через DB2 tooling/панели.
+    2.	Сделать/проверить BIND PLAN(Z88011) PKLIST(DSN_DEFAULT_COLLID_Z88011.*) (ты уже сделал).
+    3.	В CICS:
+          •	CEDA DEFINE DB2ENTRY(Z88011E) PLAN(Z88011) GROUP(Z88011)
+          •	CEDA DEFINE DB2TRAN(LIBT) ENTRY(Z88011E) TRANSID(LIBT) GROUP(Z88011)
+    4.	CEDA INSTALL GROUP(Z88011) (или обеспечить авто-install на старте, см. ниже)
+    5.	Проверка:
+          •	CEMT I DB2CONN (CONNECTED)
+          •	CEMT I DB2ENTRY(Z88011E)
+          •	CEMT I DB2TRAN(LIBT)
+          •	CEMT I TRANS(LIBT) и CEMT I PROG(LIBMQCIC)
+
+⸻
+
+8) Важный момент про “после рестарта транзакции пропадают”
+
+Они не “пропадают” из CSD, они просто не установлены (not installed) в region runtime, пока ты не сделаешь INSTALL группы/листов.
+
+Правильный способ, чтобы LIBT был доступен после старта региона без ручного CEDA INSTALL:
+•	добавить группу Z88011 в GRPLIST (startup group list) региона, чтобы CICS сам устанавливал её при старте.
+Это делается через:
+•	SIT параметр GRPLIST=... (или через список/лист в CSD — зависит от того, как у вас в регионе принято).
+
+Если хочешь — я дам конкретный “минимальный вариант” для твоего случая (по твоему PROC/SYSIN видно, где лучше прописать GRPLIST), но общий принцип именно такой: не job-степом “CEDA INSTALL”, а через GRPLIST на старте.
+
+⸻
+
+Если ты покажешь экран CEDA DEFINE DB2ENTRY (какие там поля доступны в твоём CICS 7.5) или CEMT I DB2CONN (там бывает важный PLAN/THREADWAIT/AUTOCONNECT контекст), я скажу какие значения поставить именно тебе (threadlimit, protectnum, authid), чтобы LIBT → LIBMQCIC → DB2 работало стабильно.
+
+
+
+
+

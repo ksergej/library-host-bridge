@@ -1,4 +1,4 @@
-CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
+CBL NOXREF NOMAP NOOFFSET NOSOURCE
        IDENTIFICATION DIVISION.
        PROGRAM-ID. LIBMQCIC.
 
@@ -8,21 +8,17 @@ CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
        01  MQM-CONSTANTS.
            COPY CMQV.
 
-       01  MQM-OBJECT-DESCRIPTOR.
+       01  MQOD.
            COPY CMQODV.
 
-       01  MQM-MESSAGE-DESCRIPTOR.
+       01  MQMD.
            COPY CMQMDV.
 
-       01  MQM-GET-MESSAGE-OPTIONS.
+       01  MQGMO.
            COPY CMQGMOV.
 
-       01  MQM-PUT-MESSAGE-OPTIONS.
+       01  MQPMO.
            COPY CMQPMOV.
-
-       EXEC SQL
-            INCLUDE SQLCA
-       END-EXEC.
 
        01  WS-RESP              PIC S9(8) COMP VALUE 0.
        01  WS-RESP2             PIC S9(8) COMP VALUE 0.
@@ -44,8 +40,6 @@ CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
        01  WS-REASON-DISP       PIC -9(9).
        01  WS-WAIT-DISP         PIC -9(9).
        01  WS-DATA-LEN-DISP     PIC -9(9).
-       01  WS-SQLCODE-DISP      PIC -9(9).
-       01  WS-SQLSTATE-DISP     PIC X(5).
 
        01  WS-TERM-MSG          PIC X(80) VALUE SPACES.
        01  WS-TERM-MSG2         PIC X(80) VALUE SPACES.
@@ -70,18 +64,6 @@ CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
        01  WS-END               PIC S9(9) COMP VALUE 0.
        01  WS-LEN               PIC S9(9) COMP VALUE 0.
 
-       01  WS-LOAN-ID-NUM       PIC S9(9) COMP VALUE 0.
-       01  WS-NEW-LOAN-NUM      PIC 9(9) VALUE 0.
-       01  WS-NEW-LOAN-ID       PIC X(10) VALUE SPACES.
-       01  WS-PADDED            PIC X(9) VALUE SPACES.
-       01  WS-ACT-LOAN-COUNT    PIC 9(2) COMP VALUE 0.
-       01  WS-ACT-LOAN-ID-NUM   PIC S9(9) COMP VALUE 0.
-       01  WS-ACT-BOOK-ID       PIC X(32) VALUE SPACES.
-       01  WS-SQL-MSG           PIC X(80) VALUE SPACES.
-
-       01  WS-ACTIVE-XML        PIC X(2000) VALUE SPACES.
-       01  WS-ACTIVE-PTR        PIC S9(9) COMP VALUE 1.
-
        01  WS-TAG-USER-START    PIC X(10) VALUE '<user><id>'.
        01  WS-TAG-USER-END      PIC X(12) VALUE '</id></user>'.
        01  WS-TAG-BOOK-START    PIC X(10) VALUE '<book><id>'.
@@ -90,15 +72,6 @@ CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
        01  WS-TAG-ACT-USR-END   PIC X(9)  VALUE '</userId>'.
        01  WS-TAG-LOANID-ST     PIC X(8)  VALUE '<loanId>'.
        01  WS-TAG-LOANID-END    PIC X(9)  VALUE '</loanId>'.
-
-           EXEC SQL
-            DECLARE CUR-ACTIVE-LOANS CURSOR FOR
-                SELECT LOAN_ID_NUM, BOOK_ID
-                  FROM LOAN
-                 WHERE USER_ID = :WS-USER-ID
-                   AND RETURN_DATE IS NULL
-                 ORDER BY LOAN_ID_NUM
-           END-EXEC.
 
        PROCEDURE DIVISION.
 
@@ -120,7 +93,7 @@ CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
            MOVE SPACES         TO MQOD-OBJECTNAME
            MOVE WS-REQ-QUEUE   TO MQOD-OBJECTNAME
            CALL 'MQOPEN' USING HCONN
-                               MQM-OBJECT-DESCRIPTOR
+                               MQOD
                                MQOO-INPUT-SHARED
                                HOBJ-REQ
                                COMPCODE
@@ -135,7 +108,7 @@ CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
            MOVE SPACES         TO MQOD-OBJECTNAME
            MOVE WS-RPLY-QUEUE  TO MQOD-OBJECTNAME
            CALL 'MQOPEN' USING HCONN
-                               MQM-OBJECT-DESCRIPTOR
+                               MQOD
                                MQOO-OUTPUT
                                HOBJ-RPLY
                                COMPCODE
@@ -163,8 +136,8 @@ CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
            MOVE 0      TO REQ-DATA-LEN
            CALL 'MQGET' USING HCONN
                               HOBJ-REQ
-                              MQM-MESSAGE-DESCRIPTOR
-                              MQM-GET-MESSAGE-OPTIONS
+                              MQMD
+                              MQGMO
                               REQ-BUF-LEN
                               REQ-DATA
                               REQ-DATA-LEN
@@ -193,18 +166,7 @@ CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
            PERFORM SEND-TEXT
 
            PERFORM PARSE-REQUEST
-
-           IF WS-REQUEST-TYPE = 'ACTIVE'
-              PERFORM PROCESS-ACTIVE-BY-USER
-           ELSE
-              IF WS-REQUEST-TYPE = 'RETURN'
-                 PERFORM PROCESS-RETURN
-              ELSE
-                 PERFORM PROCESS-BORROW
-              END-IF
-           END-IF
-
-           PERFORM BUILD-RESPONSE
+           PERFORM BUILD-STUB-RESPONSE
 
            MOVE MQMD-MSGID TO MQMD-CORRELID
            MOVE MQMI-NONE  TO MQMD-MSGID
@@ -219,8 +181,8 @@ CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
 
            CALL 'MQPUT' USING HCONN
                               HOBJ-RPLY
-                              MQM-MESSAGE-DESCRIPTOR
-                              MQM-PUT-MESSAGE-OPTIONS
+                              MQMD
+                              MQPMO
                               RSP-DATA-LEN
                               RSP-DATA
                               COMPCODE
@@ -318,7 +280,7 @@ CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
               PERFORM EXTRACT-ACTIVE-USER-ID
               IF WS-USER-ID = SPACES
                  MOVE 'ERR ' TO WS-STATUS-CODE
-                 MOVE 'Missing userId' TO WS-STATUS-MESSAGE
+                 MOVE 'Invalid ACTIVE request' TO WS-STATUS-MESSAGE
               END-IF
            ELSE
               IF WS-RETURN-COUNT > 0
@@ -326,7 +288,7 @@ CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
                  PERFORM EXTRACT-LOAN-ID
                  IF WS-LOAN-ID = SPACES
                     MOVE 'ERR ' TO WS-STATUS-CODE
-                    MOVE 'Missing loanId' TO WS-STATUS-MESSAGE
+                    MOVE 'Invalid RETURN request' TO WS-STATUS-MESSAGE
                  END-IF
               ELSE
                  MOVE 'BORROW' TO WS-REQUEST-TYPE
@@ -334,182 +296,11 @@ CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
                  PERFORM EXTRACT-BOOK
                  IF WS-USER-ID = SPACES OR WS-BOOK-ID = SPACES
                     MOVE 'ERR ' TO WS-STATUS-CODE
-                    MOVE 'Missing userId/bookId'
+                    MOVE 'Invalid BORROW request'
                       TO WS-STATUS-MESSAGE
                  END-IF
               END-IF
            END-IF.
-
-       PROCESS-BORROW.
-           IF WS-STATUS-CODE NOT = 'OK'
-              EXIT PARAGRAPH
-           END-IF
-
-           EXEC SQL
-              SELECT COUNT(*)
-                INTO :WS-ACTIVE-COUNT
-                FROM LOAN
-               WHERE BOOK_ID = :WS-BOOK-ID
-                 AND RETURN_DATE IS NULL
-           END-EXEC
-           IF SQLCODE NOT = 0
-              PERFORM SQL-ERROR
-              EXIT PARAGRAPH
-           END-IF
-
-           IF WS-ACTIVE-COUNT > 0
-              MOVE 'BUSY' TO WS-STATUS-CODE
-              MOVE 'Book already on loan' TO WS-STATUS-MESSAGE
-              EXIT PARAGRAPH
-           END-IF
-
-           EXEC SQL
-              INSERT INTO LOAN
-                     (USER_ID, BOOK_ID, LOAN_DATE, DUE_DATE,
-                      RETURN_DATE)
-              VALUES (:WS-USER-ID, :WS-BOOK-ID,
-                      CURRENT DATE, CURRENT DATE + 14 DAYS, NULL)
-           END-EXEC
-           IF SQLCODE NOT = 0
-              PERFORM SQL-ERROR
-              EXIT PARAGRAPH
-           END-IF
-
-           EXEC SQL
-              VALUES IDENTITY_VAL_LOCAL()
-                INTO :WS-LOAN-ID-NUM
-           END-EXEC
-           IF SQLCODE NOT = 0
-              PERFORM SQL-ERROR
-              EXIT PARAGRAPH
-           END-IF
-
-           MOVE WS-LOAN-ID-NUM TO WS-NEW-LOAN-NUM
-           MOVE SPACES TO WS-NEW-LOAN-ID
-           MOVE 'L'    TO WS-NEW-LOAN-ID(1:1)
-           MOVE WS-NEW-LOAN-NUM TO WS-NEW-LOAN-ID(2:9)
-           MOVE 'OK' TO WS-STATUS-CODE
-           MOVE 'Loan created' TO WS-STATUS-MESSAGE
-           EXIT.
-
-       PROCESS-RETURN.
-           IF WS-STATUS-CODE NOT = 'OK'
-              EXIT PARAGRAPH
-           END-IF
-
-           MOVE SPACES TO WS-PADDED
-           IF WS-LOAN-ID(1:1) = 'L'
-              MOVE WS-LOAN-ID(2:9) TO WS-PADDED
-           ELSE
-              MOVE WS-LOAN-ID TO WS-PADDED
-           END-IF
-
-           IF WS-PADDED IS NOT NUMERIC
-              MOVE 'ERR ' TO WS-STATUS-CODE
-              MOVE 'Invalid loanId' TO WS-STATUS-MESSAGE
-              EXIT PARAGRAPH
-           END-IF
-
-           MOVE WS-PADDED TO WS-LOAN-ID-NUM
-
-           EXEC SQL
-              UPDATE LOAN
-                 SET RETURN_DATE = CURRENT DATE
-               WHERE LOAN_ID_NUM = :WS-LOAN-ID-NUM
-                 AND RETURN_DATE IS NULL
-           END-EXEC
-
-           IF SQLCODE = 100
-              MOVE 'NOTF' TO WS-STATUS-CODE
-              MOVE 'Loan not found or returned'
-                TO WS-STATUS-MESSAGE
-              EXIT PARAGRAPH
-           END-IF
-
-           IF SQLCODE NOT = 0
-              PERFORM SQL-ERROR
-              EXIT PARAGRAPH
-           END-IF
-
-           MOVE 'OK' TO WS-STATUS-CODE
-           MOVE 'Loan returned' TO WS-STATUS-MESSAGE
-           EXIT.
-
-       PROCESS-ACTIVE-BY-USER.
-           IF WS-STATUS-CODE NOT = 'OK'
-              EXIT PARAGRAPH
-           END-IF
-
-           MOVE 0 TO WS-ACT-LOAN-COUNT
-           MOVE SPACES TO WS-ACTIVE-XML
-           MOVE 1 TO WS-ACTIVE-PTR
-
-           EXEC SQL
-              OPEN CUR-ACTIVE-LOANS
-           END-EXEC
-           IF SQLCODE NOT = 0
-              PERFORM SQL-ERROR
-              EXIT PARAGRAPH
-           END-IF
-
-           PERFORM UNTIL WS-ACT-LOAN-COUNT >= 50
-              EXEC SQL
-                 FETCH CUR-ACTIVE-LOANS
-                   INTO :WS-ACT-LOAN-ID-NUM, :WS-ACT-BOOK-ID
-              END-EXEC
-              IF SQLCODE = 0
-                 ADD 1 TO WS-ACT-LOAN-COUNT
-                 MOVE WS-ACT-LOAN-ID-NUM TO WS-NEW-LOAN-NUM
-                 MOVE SPACES TO WS-NEW-LOAN-ID
-                 MOVE 'L' TO WS-NEW-LOAN-ID(1:1)
-                 MOVE WS-NEW-LOAN-NUM TO WS-NEW-LOAN-ID(2:9)
-                 PERFORM APPEND-ACTIVE-LOAN
-              ELSE
-                 IF SQLCODE = 100
-                    EXIT PERFORM
-                 ELSE
-                    PERFORM SQL-ERROR
-                    EXIT PERFORM
-                 END-IF
-              END-IF
-           END-PERFORM
-
-           EXEC SQL
-              CLOSE CUR-ACTIVE-LOANS
-           END-EXEC
-
-           IF WS-STATUS-CODE = 'OK'
-              MOVE 'OK' TO WS-STATUS-CODE
-              MOVE 'Active loans returned'
-                TO WS-STATUS-MESSAGE
-           END-IF
-           EXIT.
-
-       APPEND-ACTIVE-LOAN.
-           STRING
-              '<loan><loanId>' DELIMITED BY SIZE
-              FUNCTION TRIM(WS-NEW-LOAN-ID) DELIMITED BY SIZE
-              '</loanId><book><id>' DELIMITED BY SIZE
-              FUNCTION TRIM(WS-ACT-BOOK-ID) DELIMITED BY SIZE
-              '</id></book></loan>' DELIMITED BY SIZE
-              INTO WS-ACTIVE-XML
-              WITH POINTER WS-ACTIVE-PTR
-           END-STRING
-           EXIT.
-
-       SQL-ERROR.
-           MOVE SQLCODE  TO WS-SQLCODE-DISP
-           MOVE SQLSTATE TO WS-SQLSTATE-DISP
-           MOVE SPACES TO WS-SQL-MSG
-           STRING 'SQLCODE=' DELIMITED BY SIZE
-                  WS-SQLCODE-DISP DELIMITED BY SIZE
-                  ' SQLSTATE=' DELIMITED BY SIZE
-                  WS-SQLSTATE-DISP DELIMITED BY SIZE
-              INTO WS-SQL-MSG
-           END-STRING
-           MOVE 'ERR ' TO WS-STATUS-CODE
-           MOVE WS-SQL-MSG TO WS-STATUS-MESSAGE
-           EXIT.
 
        EXTRACT-USER.
            MOVE 0 TO WS-START WS-END WS-LEN
@@ -591,11 +382,15 @@ CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
               MOVE REQ-DATA (WS-START + 1: WS-LEN) TO WS-LOAN-ID
            END-IF.
 
-       BUILD-RESPONSE.
+       BUILD-STUB-RESPONSE.
            MOVE SPACES TO RSP-DATA
            MOVE 1      TO WS-RSP-PTR
 
            IF WS-REQUEST-TYPE = 'ACTIVE'
+              IF WS-STATUS-CODE = 'OK'
+                 MOVE 'Active loans stub without DB2'
+                   TO WS-STATUS-MESSAGE
+              END-IF
               STRING
                  '<HostActiveLoansByUserResponse xmlns='
                  '"http://company.com/library/host/schema">'
@@ -609,21 +404,17 @@ CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
                  '</message>' DELIMITED BY SIZE
                  '<userId>' DELIMITED BY SIZE
                  FUNCTION TRIM(WS-USER-ID) DELIMITED BY SIZE
-                 '</userId><loans>' DELIMITED BY SIZE
-                 INTO RSP-DATA WITH POINTER WS-RSP-PTR
-              END-STRING
-              IF WS-ACTIVE-PTR > 1
-                 STRING WS-ACTIVE-XML DELIMITED BY SIZE
-                    INTO RSP-DATA WITH POINTER WS-RSP-PTR
-                 END-STRING
-              END-IF
-              STRING
-                 '</loans></HostActiveLoansByUserResponse>'
+                 '</userId>' DELIMITED BY SIZE
+                 '</HostActiveLoansByUserResponse>'
                  DELIMITED BY SIZE
                  INTO RSP-DATA WITH POINTER WS-RSP-PTR
               END-STRING
            ELSE
               IF WS-REQUEST-TYPE = 'RETURN'
+                 IF WS-STATUS-CODE = 'OK'
+                    MOVE 'Return stub accepted without DB2'
+                      TO WS-STATUS-MESSAGE
+                 END-IF
                  STRING
                     '<HostReturnResponse xmlns="http://company.'
                     'com/library/host/schema">' DELIMITED BY SIZE
@@ -642,12 +433,14 @@ CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
                     INTO RSP-DATA WITH POINTER WS-RSP-PTR
                  END-STRING
               ELSE
+                 IF WS-STATUS-CODE = 'OK'
+                    MOVE 'Borrow stub accepted without DB2'
+                      TO WS-STATUS-MESSAGE
+                 END-IF
                  STRING
                     '<HostBorrowResponse xmlns="http://company.'
                     'com/library/host/schema">' DELIMITED BY SIZE
-                    '<loan><loanId>' DELIMITED BY SIZE
-                    FUNCTION TRIM(WS-NEW-LOAN-ID) DELIMITED BY SIZE
-                    '</loanId><user><id>' DELIMITED BY SIZE
+                    '<loan><user><id>' DELIMITED BY SIZE
                     FUNCTION TRIM(WS-USER-ID) DELIMITED BY SIZE
                     '</id></user><book><id>' DELIMITED BY SIZE
                     FUNCTION TRIM(WS-BOOK-ID) DELIMITED BY SIZE
@@ -666,7 +459,6 @@ CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
               END-IF
            END-IF
 
-           COMPUTE RSP-DATA-LEN = WS-RSP-PTR - 1
-           EXIT.
+           COMPUTE RSP-DATA-LEN = WS-RSP-PTR - 1.
 
        END PROGRAM LIBMQCIC.

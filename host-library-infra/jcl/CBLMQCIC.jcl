@@ -1,23 +1,33 @@
-//CBLMQCIC JOB 1,NOTIFY=&SYSUID,CLASS=A,MSGCLASS=H,TIME=1440
-//********************************************************************
+//CBLMQCIX JOB 1,NOTIFY=&SYSUID,CLASS=A,MSGCLASS=H,TIME=1440
+//*-------------------------------------------------------------------*
 //* Compile + Link-edit + Bind (DB2) for CICS COBOL MQ program
-//* Customize placeholders before use.
-//********************************************************************
-// SET MBR=LIBMQCIC
-//********************************************************************
-//*  COMPILE - COBOL + embedded SQL + CICS
-//********************************************************************
-//COBOL    EXEC PGM=IGYCRCTL,REGION=0M,PARM='SQL,CICS'
-//STEPLIB  DD  DSN=YOUR.COBOL.COMPILER.LOADLIB,DISP=SHR
-//         DD  DSN=YOUR.DB2.EXITLIB,DISP=SHR
-//         DD  DSN=YOUR.DB2.SDSNLOAD,DISP=SHR
+//* Target program: LIBMQCIC
+//* Variant: external CICS translator DFHECP1$ (no DFHAPIR dependency)
+//*-------------------------------------------------------------------*
+//*-------------------------------------------------------------------*
+//* 1) CICS TRANSLATION (EXEC CICS -> COBOL)
+//*-------------------------------------------------------------------*
+//TRANSL   EXEC PGM=DFHECP1$,REGION=0M
+//STEPLIB  DD  DSN=DFH620.CICS.SDFHLOAD,DISP=SHR
+//SYSPRINT DD  SYSOUT=*
+//SYSPUNCH DD  DSN=&&CICSTRN,UNIT=SYSALLDA,DISP=(,PASS),
+//             SPACE=(CYL,(1,1))
+//SYSIN    DD  DISP=SHR,DSN=Z88011.CBL(LIBMQCIC)
+//SYSUT1   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSUT2   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//*-------------------------------------------------------------------*
+//* 2) COBOL COMPILE + DB2 SQL (translated source as SYSIN)
+//*-------------------------------------------------------------------*
+//COBOL    EXEC PGM=IGYCRCTL,REGION=0M,PARM='SQL'
+//STEPLIB  DD  DSN=IGY640.SIGYCOMP,DISP=SHR
+//         DD  DSN=DSND10.DBDG.SDSNEXIT,DISP=SHR
+//         DD  DSN=DSND10.SDSNLOAD,DISP=SHR
 //         DD  DSN=CEE.SCEERUN,DISP=SHR
 //         DD  DSN=CEE.SCEERUN2,DISP=SHR
-//SYSIN    DD  DISP=SHR,DSN=&SYSUID..CBL(&MBR)
-//DBRMLIB  DD  DISP=SHR,DSN=&SYSUID..DBRMLIB(&MBR)
-//SYSLIB   DD  DSN=YOUR.MQ.COPYLIB,DISP=SHR
-//         DD  DSN=YOUR.CICS.COPYLIB,DISP=SHR
-//         DD  DSN=&SYSUID..CBL,DISP=SHR
+//SYSIN    DD  DSN=&&CICSTRN,DISP=(OLD,DELETE)
+//DBRMLIB  DD  DISP=SHR,DSN=Z88011.DBRMLIB(LIBMQCIC)
+//SYSLIB   DD  DSN=CSQ920.SCSQCOBC,DISP=SHR
+//         DD  DSN=Z88011.CBL,DISP=SHR
 //SYSPRINT DD  SYSOUT=*
 //SYSLIN   DD  DSN=&&LOADSET,UNIT=SYSALLDA,
 //             DISP=(MOD,PASS),SPACE=(CYL,(1,1))
@@ -37,33 +47,38 @@
 //SYSUT14  DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
 //SYSUT15  DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
 //SYSMDECK DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
-//********************************************************************
-//* LINK-EDIT
-//********************************************************************
-//LKED     EXEC PGM=IEWBLINK,COND=(8,LT,COBOL),REGION=0M
+//*-------------------------------------------------------------------*
+//* 3) LINK-EDIT (CICS + DB2 + MQ)
+//*-------------------------------------------------------------------*
+//LKED     EXEC PGM=IEWBLINK,REGION=0M,PARM='LIST,LET,MAP'
 //SYSLIB   DD  DSN=CEE.SCEELKED,DISP=SHR
-//         DD  DSN=YOUR.DB2.SDSNLOAD,DISP=SHR
-//         DD  DSN=YOUR.MQ.LOADLIB,DISP=SHR
-//         DD  DSN=YOUR.CICS.LOADLIB,DISP=SHR
+//         DD  DSN=DSND10.SDSNLOAD,DISP=SHR
+//CICSLIB  DD  DSN=DFH620.CICS.SDFHLOAD,DISP=SHR
+//MQLIB    DD  DSN=CSQ920.SCSQLOAD,DISP=SHR
 //SYSPRINT DD  SYSOUT=*
 //SYSUT1   DD  UNIT=SYSALLDA,SPACE=(CYL,(1,1))
+//SYSLMOD  DD  DSN=Z88011.LOAD(LIBMQCIC),DISP=SHR
 //SYSLIN   DD  DSN=&&LOADSET,DISP=(OLD,DELETE)
 //         DD  *
-  INCLUDE SYSLIB(CSQBSTUB)
+  INCLUDE CICSLIB(DFHELII)
+  INCLUDE CICSLIB(DSNCLI)
+  INCLUDE MQLIB(CSQCSTUB)
   ENTRY  LIBMQCIC
   NAME   LIBMQCIC(R)
 /*
-//SYSLMOD  DD  DSN=&SYSUID..LOAD(&MBR),DISP=SHR
-//********************************************************************
-//* BIND DB2 PACKAGE
-//********************************************************************
+//*-------------------------------------------------------------------*
+//* 4) BIND DB2 PACKAGE
+//*-------------------------------------------------------------------*
 //BIND     EXEC PGM=IKJEFT01,COND=(8,LT,LKED)
-//STEPLIB  DD DSN=YOUR.DB2.SDSNLOAD,DISP=SHR
-//DBRMLIB  DD DSN=&SYSUID..DBRMLIB,DISP=SHR
-//SYSUDUMP DD DUMMY
-//SYSTSPRT DD SYSOUT=*
-//SYSPRINT DD SYSOUT=*
-//SYSTSIN  DD *,SYMBOLS=EXECSYS
- DSN SYSTEM(YOURDB2)
- BIND PACKAGE(&SYSUID) MEMBER(LIBMQCIC) ACT(REP) ISO(CS) ENCODING(EBCDIC)
-/*
+//STEPLIB  DD  DSN=DSND10.DBDG.SDSNEXIT,DISP=SHR
+//         DD  DSN=DSND10.SDSNLOAD,DISP=SHR
+//DBRMLIB  DD  DSN=Z88011.DBRMLIB(LIBMQCIC),DISP=SHR
+//SYSUDUMP DD  DUMMY
+//SYSTSPRT DD  SYSOUT=*
+//SYSPRINT DD  SYSOUT=*
+//SYSTSIN  DD  *
+  DSN SYSTEM(DBDG)
+  BIND PACKAGE(DSN_DEFAULT_COLLID_Z88011) MEMBER(LIBMQCIC) -
+       OWNER(Z88011) QUALIFIER(Z88011) -
+       ACTION(REPLACE) ISOLATION(CS) ENCODING(EBCDIC) -
+       VALIDATE(BIND) RELEASE(COMMIT)

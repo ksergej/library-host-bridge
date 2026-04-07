@@ -1,4 +1,4 @@
-CBL CICS SQL NOXREF NOMAP NOOFFSET NOSOURCE
+CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
        IDENTIFICATION DIVISION.
        PROGRAM-ID. LIBMQCIC.
 
@@ -23,6 +23,8 @@ CBL CICS SQL NOXREF NOMAP NOOFFSET NOSOURCE
 
        01  PARAMS-STATUS            PIC XX.
        01  WS-SQLCODE-EDIT      PIC -ZZZ,ZZZ,ZZ9 USAGE DISPLAY.
+       01  WS-SQLSTATE-DISP     PIC X(5).
+       01  WS-SQLERRMC-DISP     PIC X(70).
 
        01  MQM-CONSTANTS.
            COPY CMQV.
@@ -40,21 +42,12 @@ CBL CICS SQL NOXREF NOMAP NOOFFSET NOSOURCE
            COPY CMQPMOV.
 
        01  WS-QMGR-NAME       PIC X(48) VALUE 'CSQ9'.
-       01  WS-REQ-QUEUE       PIC X(48) VALUE 'Z88011.MQZ3.QLOCAL'.
-       01  WS-REP-QUEUE       PIC X(48) VALUE 'Z88011.MQZ3.REPLYTO.QLOCAL'.
-
-      * MQ names (MVP: constants; derived from prior batch PARAMS DD)
-      *   QMGR=CSQ9
-      *   REQ =Z88011.MQZ3.QLOCAL
-      *   RPLY=Z88011.MQZ3.REPLYTO.QLOCAL
-      * Replace with TSQ/VSAM/COMMAREA config later.
-       01  WS-WAIT-MS-DISP    PIC 9(9)   VALUE 0.
-       01  WS-WAIT-VAL-STR    PIC X(9).
-       01  WS-WAIT-LEN        PIC S9(4) COMP.
-       01  WS-WAIT-MS         PIC S9(9) COMP-5 VALUE 0.
-       01  WS-CTL-LINE        PIC X(256).
-       01  WS-VAL             PIC X(200).
-       01  WS-EOF             PIC X VALUE 'N'.
+       01  WS-REQ-QUEUE       PIC X(48)
+           VALUE 'Z88011.MQZ3.QLOCAL'.
+       01  WS-REP-QUEUE       PIC X(48)
+           VALUE 'Z88011.MQZ3.REPLYTO.QLOCAL'.
+       01  WS-WAIT-MS-DISP    PIC 9(9)   VALUE 30000.
+       01  WS-WAIT-MS         PIC S9(9) COMP-5 VALUE 30000.
        01  WS-KEY             PIC X(16).
        01  WS-REQUEST-TYPE    PIC X(6) VALUE SPACES.
 
@@ -126,25 +119,21 @@ CBL CICS SQL NOXREF NOMAP NOOFFSET NOSOURCE
 
        MAIN-SECTION.
 
-           DISPLAY 'LIBMQCIC STARTING (CICS MVP)'.
-
-           DISPLAY 'MQ QMGR=' WS-QMGR-NAME
-                   ' REQQ=' WS-REQ-QUEUE
-                   ' RPLYQ=' WS-REP-QUEUE
-                   ' MODE=NO-WAIT'.
+           DISPLAY 'LIBMQCIC STARTING'.
 
            CALL 'MQCONN' USING WS-QMGR-NAME
                                HCONN
                                COMPCODE
                                REASON.
            IF COMPCODE NOT = MQCC-OK
-               DISPLAY 'MQCONN FAILED, REASON=' REASON
+               DISPLAY 'MQCONN FAIL CC=' COMPCODE
+               DISPLAY 'MQCONN FAIL RC=' REASON
                EXEC CICS RETURN END-EXEC
            END-IF.
-           DISPLAY 'MQCONN SUCCEEDED, HCONN=' HCONN.
 
            MOVE MQOD-VERSION-4 TO MQOD-VERSION.
-           MOVE WS-REQ-QUEUE    TO MQOD-OBJECTNAME.
+           MOVE SPACES         TO MQOD-OBJECTNAME.
+           MOVE WS-REQ-QUEUE   TO MQOD-OBJECTNAME.
            CALL 'MQOPEN' USING HCONN
                                MQM-OBJECT-DESCRIPTOR
                                MQOO-INPUT-SHARED
@@ -152,12 +141,14 @@ CBL CICS SQL NOXREF NOMAP NOOFFSET NOSOURCE
                                COMPCODE
                                REASON.
            IF COMPCODE NOT = MQCC-OK
-               DISPLAY 'MQOPEN REQ FAILED, REASON=' REASON
+               DISPLAY 'MQOPEN REQ FAIL CC=' COMPCODE
+               DISPLAY 'MQOPEN REQ FAIL RC=' REASON
                GO TO MQ-DISCONNECT
            END-IF.
 
            MOVE MQOD-VERSION-4 TO MQOD-VERSION.
-           MOVE WS-REP-QUEUE    TO MQOD-OBJECTNAME.
+           MOVE SPACES         TO MQOD-OBJECTNAME.
+           MOVE WS-REP-QUEUE   TO MQOD-OBJECTNAME.
            CALL 'MQOPEN' USING HCONN
                                MQM-OBJECT-DESCRIPTOR
                                MQOO-OUTPUT
@@ -165,21 +156,26 @@ CBL CICS SQL NOXREF NOMAP NOOFFSET NOSOURCE
                                COMPCODE
                                REASON.
            IF COMPCODE NOT = MQCC-OK
-               DISPLAY 'MQOPEN REP FAILED, REASON=' REASON
+               DISPLAY 'MQOPEN REP FAIL CC=' COMPCODE
+               DISPLAY 'MQOPEN REP FAIL RC=' REASON
                GO TO MQ-CLOSE-REQ
            END-IF.
-           DISPLAY 'MQOPEN SUCCEEDED FOR BOTH QUEUES'.
+
+           MOVE MQMD-VERSION-2          TO MQMD-VERSION.
+           MOVE MQMT-REQUEST            TO MQMD-MSGTYPE.
+           MOVE MQFMT-STRING            TO MQMD-FORMAT.
+           MOVE MQENC-NATIVE            TO MQMD-ENCODING.
+           MOVE 1047                    TO MQMD-CODEDCHARSETID.
 
            MOVE MQGMO-VERSION-1         TO MQGMO-VERSION.
-           MOVE MQMT-DATAGRAM           TO MQMD-MSGTYPE.
-
-           MOVE MQGMO-NO-WAIT           TO MQGMO-OPTIONS
-           ADD  MQGMO-CONVERT           TO MQGMO-OPTIONS
-           ADD  MQGMO-FAIL-IF-QUIESCING TO MQGMO-OPTIONS
+           MOVE MQGMO-WAIT              TO MQGMO-OPTIONS.
+           ADD  MQGMO-CONVERT           TO MQGMO-OPTIONS.
+           ADD  MQGMO-FAIL-IF-QUIESCING TO MQGMO-OPTIONS.
            ADD  MQGMO-SYNCPOINT         TO MQGMO-OPTIONS.
+           MOVE WS-WAIT-MS              TO MQGMO-WAITINTERVAL.
 
-           MOVE 1047                    TO MQMD-CODEDCHARSETID
-           MOVE MQENC-NATIVE            TO MQMD-ENCODING.
+           MOVE SPACES TO REQ-DATA.
+           MOVE 0      TO W03-DATA-LENGTH.
 
            CALL 'MQGET' USING HCONN
                              HOBJ-REQ
@@ -192,35 +188,23 @@ CBL CICS SQL NOXREF NOMAP NOOFFSET NOSOURCE
                              REASON.
            IF COMPCODE NOT = MQCC-OK
               IF REASON = MQRC-NO-MSG-AVAILABLE
-                  DISPLAY 'MQGET: NO MESSAGE AVAILABLE'
+                  DISPLAY 'MQGET NO MSG WAIT=' WS-WAIT-MS-DISP
                   GO TO MQ-CLOSE-BOTH
               END-IF
-              DISPLAY 'MQGET failed CC=' COMPCODE ' RC=' REASON
+              DISPLAY 'MQGET FAIL CC=' COMPCODE
+              DISPLAY 'MQGET FAIL RC=' REASON
               EXEC CICS SYNCPOINT ROLLBACK END-EXEC
               GO TO MQ-CLOSE-BOTH
-           ELSE
-              DISPLAY 'Got ' W03-DATA-LENGTH
-                ' bytes (converted to CCSID '
-                      MQMD-CODEDCHARSETID ')'
-              DISPLAY 'MSG: '  REQ-DATA(1:W03-DATA-LENGTH)
            END-IF.
 
-           MOVE MQMD-MSGID      TO MQMD-CORRELID.
-           MOVE MQMI-NONE       TO MQMD-MSGID.
+           DISPLAY 'MQGET OK LEN=' W03-DATA-LENGTH.
+
+           MOVE MQMD-MSGID TO MQMD-CORRELID.
+           MOVE MQMI-NONE  TO MQMD-MSGID.
 
            MOVE REQ-DATA(1:W03-DATA-LENGTH) TO WS-XML-REQUEST.
 
            PERFORM PARSE-XML-REQUEST.
-
-           IF WS-REQUEST-TYPE = 'ACTIVE'
-               DISPLAY 'PARSE COMPLETE, STATUS=' HAU-STATUS-CODE
-           ELSE
-               IF WS-REQUEST-TYPE = 'RETURN'
-                   DISPLAY 'PARSE COMPLETE, STATUS=' HRR-STATUS-CODE
-               ELSE
-                   DISPLAY 'PARSE COMPLETE, STATUS=' HBR-STATUS-CODE
-               END-IF
-           END-IF
 
            IF WS-REQUEST-TYPE = 'ACTIVE'
                IF HAU-STATUS-CODE NOT = 'ERR '
@@ -236,26 +220,18 @@ CBL CICS SQL NOXREF NOMAP NOOFFSET NOSOURCE
                        PERFORM PROCESS-BORROW
                    END-IF
                END-IF
-           END-IF
-
-           IF WS-REQUEST-TYPE = 'ACTIVE'
-               DISPLAY 'PROCESS COMPLETE, STATUS=' HAU-STATUS-CODE
-           ELSE
-               IF WS-REQUEST-TYPE = 'RETURN'
-                   DISPLAY 'PROCESS COMPLETE, STATUS=' HRR-STATUS-CODE
-               ELSE
-                   DISPLAY 'PROCESS COMPLETE, STATUS=' HBR-STATUS-CODE
-               END-IF
-           END-IF
+           END-IF.
 
            PERFORM BUILD-XML-RESPONSE.
 
-           MOVE MQPMO-VERSION-1 TO MQPMO-VERSION.
-           MOVE MQPMO-NO-SYNCPOINT TO MQPMO-OPTIONS.
-           ADD  MQPMO-SYNCPOINT TO MQPMO-OPTIONS.
-           ADD  MQPMO-FAIL-IF-QUIESCING TO MQPMO-OPTIONS.
+           MOVE MQMT-REPLY              TO MQMD-MSGTYPE.
+           MOVE MQFMT-STRING            TO MQMD-FORMAT.
+           MOVE MQENC-NATIVE            TO MQMD-ENCODING.
+           MOVE 1047                    TO MQMD-CODEDCHARSETID.
 
-           COMPUTE RSP-DATA-LEN = FUNCTION LENGTH(RSP-DATA).
+           MOVE MQPMO-VERSION-1         TO MQPMO-VERSION.
+           MOVE MQPMO-SYNCPOINT         TO MQPMO-OPTIONS.
+           ADD  MQPMO-FAIL-IF-QUIESCING TO MQPMO-OPTIONS.
 
            CALL 'MQPUT' USING HCONN
                              HOBJ-REP
@@ -266,29 +242,36 @@ CBL CICS SQL NOXREF NOMAP NOOFFSET NOSOURCE
                              COMPCODE
                              REASON.
            IF COMPCODE NOT = MQCC-OK
-               DISPLAY 'MQPUT FAILED, REASON=' REASON
+               DISPLAY 'MQPUT FAIL CC=' COMPCODE
+               DISPLAY 'MQPUT FAIL RC=' REASON
                EXEC CICS SYNCPOINT ROLLBACK END-EXEC
            ELSE
-               DISPLAY 'REPLY SENT, CORRELID SET FROM REQUEST MSGID'
+               DISPLAY 'MQPUT OK'.
                EXEC CICS SYNCPOINT END-EXEC
            END-IF.
 
        MQ-CLOSE-BOTH.
-           CALL 'MQCLOSE' USING HCONN
-                               HOBJ-REP
-                               MQCO-NONE
-                               COMPCODE
-                               REASON.
+           IF HOBJ-REP NOT = 0
+               CALL 'MQCLOSE' USING HCONN
+                                   HOBJ-REP
+                                   MQCO-NONE
+                                   COMPCODE
+                                   REASON
+           END-IF.
        MQ-CLOSE-REQ.
-           CALL 'MQCLOSE' USING HCONN
-                               HOBJ-REQ
-                               MQCO-NONE
-                               COMPCODE
-                               REASON.
+           IF HOBJ-REQ NOT = 0
+               CALL 'MQCLOSE' USING HCONN
+                                   HOBJ-REQ
+                                   MQCO-NONE
+                                   COMPCODE
+                                   REASON
+           END-IF.
        MQ-DISCONNECT.
-           CALL 'MQDISC' USING HCONN
-                               COMPCODE
-                               REASON.
+           IF HCONN NOT = 0
+               CALL 'MQDISC' USING HCONN
+                                   COMPCODE
+                                   REASON
+           END-IF.
 
            DISPLAY 'LIBMQCIC ENDING'.
            EXEC CICS RETURN END-EXEC.
@@ -506,11 +489,16 @@ CBL CICS SQL NOXREF NOMAP NOOFFSET NOSOURCE
            EXIT.
 
        SQL-ERROR.
-           MOVE SPACES TO WS-SQL-MSG.
-           MOVE SQLCODE TO WS-SQLCODE-EDIT.
+           MOVE SPACES TO WS-SQL-MSG WS-SQLSTATE-DISP.
+           MOVE SPACES TO WS-SQLERRMC-DISP.
+           MOVE SQLCODE  TO WS-SQLCODE-EDIT.
+           MOVE SQLSTATE TO WS-SQLSTATE-DISP.
+           MOVE SQLERRMC TO WS-SQLERRMC-DISP.
 
            STRING 'SQL ERROR ' DELIMITED BY SIZE
                WS-SQLCODE-EDIT DELIMITED BY SIZE
+               ' ST=' DELIMITED BY SIZE
+               WS-SQLSTATE-DISP DELIMITED BY SIZE
              INTO WS-SQL-MSG.
            IF WS-REQUEST-TYPE = 'ACTIVE'
                MOVE 'ERR ' TO HAU-STATUS-CODE
@@ -771,6 +759,9 @@ CBL CICS SQL NOXREF NOMAP NOOFFSET NOSOURCE
            END-IF.
            MOVE SPACES TO RSP-DATA.
            MOVE WS-XML-RESPONSE TO RSP-DATA.
+           COMPUTE RSP-DATA-LEN =
+               FUNCTION LENGTH(
+                   FUNCTION TRIM(WS-XML-RESPONSE TRAILING)).
            EXIT.
 
        END PROGRAM LIBMQCIC.
