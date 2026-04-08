@@ -140,7 +140,6 @@ CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
            MOVE MQFMT-STRING               TO MQMD-FORMAT
            MOVE MQENC-NATIVE               TO MQMD-ENCODING
            MOVE 1047                       TO MQMD-CODEDCHARSETID
-
            MOVE MQGMO-VERSION-1            TO MQGMO-VERSION
            MOVE MQGMO-WAIT                 TO MQGMO-OPTIONS
            ADD  MQGMO-CONVERT              TO MQGMO-OPTIONS
