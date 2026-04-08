@@ -7,13 +7,13 @@
     jcl_pds: "{{ hlq }}.JCL"
     run_member: "LIBMQTST"
     run_runtime_smoke_default: "{{ pipeline.run_runtime_smoke_default | default(false) }}"
+    run_runtime_smoke_input: "{{ run_runtime_smoke | default('auto') }}"
     run_runtime_smoke_effective: >-
       {{
         (
-          (run_runtime_smoke is defined) and
-          ((run_runtime_smoke | string | lower) != 'auto')
+          (run_runtime_smoke_input | string | lower) != 'auto'
         )
-        | ternary((run_runtime_smoke | bool), (run_runtime_smoke_default | bool))
+        | ternary((run_runtime_smoke_input | bool), (run_runtime_smoke_default | bool))
       }}
     max_rc_run: "{{ pipeline.max_rc.run | default(0) }}"
     wait_time_s: "{{ pipeline.wait_time_s.run | default(300) }}"
@@ -28,7 +28,7 @@
       debug:
         msg: >-
           Runtime smoke effective={{ run_runtime_smoke_effective }},
-          input={{ run_runtime_smoke | default('undefined') }},
+          input={{ run_runtime_smoke_input }},
           default={{ run_runtime_smoke_default }}.
 
     - name: Submit run job {{ run_member }}

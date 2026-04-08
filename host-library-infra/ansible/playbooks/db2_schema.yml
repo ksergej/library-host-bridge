@@ -6,13 +6,13 @@
   vars:
     jcl_pds: "{{ hlq }}.JCL"
     run_runtime_skip_db2_default: "{{ pipeline.run_runtime_skip_db2 | default(true) }}"
+    run_runtime_skip_db2_input: "{{ run_runtime_skip_db2 | default('auto') }}"
     run_runtime_skip_db2_effective: >-
       {{
         (
-          (run_runtime_skip_db2 is defined) and
-          ((run_runtime_skip_db2 | string | lower) != 'auto')
+          (run_runtime_skip_db2_input | string | lower) != 'auto'
         )
-        | ternary((run_runtime_skip_db2 | bool), (run_runtime_skip_db2_default | bool))
+        | ternary((run_runtime_skip_db2_input | bool), (run_runtime_skip_db2_default | bool))
       }}
     max_rc: "{{ pipeline.max_rc.schema | default(0) }}"
     wait_time_s: "{{ pipeline.wait_time_s.schema | default(300) }}"
@@ -27,7 +27,7 @@
       debug:
         msg: >-
           DB2 schema effective skip={{ run_runtime_skip_db2_effective }},
-          input={{ run_runtime_skip_db2 | default('undefined') }},
+          input={{ run_runtime_skip_db2_input }},
           default={{ run_runtime_skip_db2_default }}.
 
     - name: Submit schema job LIBSCHEMA

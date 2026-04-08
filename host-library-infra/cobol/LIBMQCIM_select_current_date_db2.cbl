@@ -45,6 +45,7 @@ CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
        01  WS-WAIT-DISP             PIC -9(9).
        01  WS-DATA-LEN-DISP         PIC -9(9).
        01  WS-SQLCODE-DISP          PIC -9(9).
+
        01  WS-TERM-MSG              PIC X(80) VALUE SPACES.
        01  WS-TERM-MSG2             PIC X(80) VALUE SPACES.
 
