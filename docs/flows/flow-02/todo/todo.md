@@ -332,6 +332,39 @@ Create and lock an operational runbook for FLOW-02 with one canonical execution 
 - commands in runbook diverge from actual playbook inventory/paths,
 - no troubleshooting section.
 
+---
+
+## Block F02-H — Bump GitHub Actions to Node24-Compatible Versions
+
+Status: done (2026-04-08)
+
+### Goal
+Remove Node.js 20 deprecation warnings for core workflow actions by moving to
+Node24-compatible major versions.
+
+### Scope
+- update `.github/workflows/ci.yml`,
+- update `.github/workflows/deploy.yml`,
+- update `.github/workflows/host-ci.yml`,
+- sync docs that describe deploy/CI behavior.
+
+### Required tests/checks
+1. workflow YAML parse check,
+2. host-ci/deploy docs reflect current workflow behavior.
+
+### Acceptance criteria
+- core actions versions are upgraded to Node24-compatible majors,
+- no behavior regression in CI/CD control logic.
+
+### Delivered
+- `actions/checkout`: `v4 -> v5` in `ci.yml`, `deploy.yml`, `host-ci.yml`.
+- `actions/setup-java`: `v4 -> v5` in `ci.yml`, `deploy.yml`.
+- `actions/setup-python`: `v5 -> v6` in `host-ci.yml`.
+- `actions/upload-artifact`: `v4 -> v5` in `host-ci.yml`.
+- Docs updated:
+  - `README.md` (ECS switch catalog),
+  - `docs/runbooks/CI_CD_SMOKE_TEST.md` (pipeline switch table / execution notes).
+
 ## 5. Notes for Control Lane
 
 1. Do not approve a block without evidence from required checks.

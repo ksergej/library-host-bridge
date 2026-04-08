@@ -71,6 +71,11 @@ Notes:
   - `.github/workflows/ci.yml`
   - `.github/workflows/deploy.yml` (ECS deployment)
   - `.github/workflows/host-ci.yml` (host pipeline contract for FLOW-02)
+- Core GitHub actions are pinned to Node24-compatible majors:
+  - `actions/checkout@v5`,
+  - `actions/setup-java@v5`,
+  - `actions/setup-python@v6`,
+  - `actions/upload-artifact@v5`.
 - Host inventory/group vars are under `host-library-infra/ansible/inventories`.
 - `host-ci.yml` has two execution modes:
   - `workflow_dispatch`: full path
