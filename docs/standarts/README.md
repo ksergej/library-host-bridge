@@ -42,6 +42,11 @@ This file defines:
 - Use when: documenting checkpoint/changelog meta-protocol.
 - Output type: protocol/reference doc.
 
+### G. Canonical Flow Runbook template
+- Template: `template-runbook-flow.md`
+- Use when: creating operational runbooks for a flow (`runbook-flow-XX.md`).
+- Output type: execution runbook with command path, checks, evidence, troubleshooting.
+
 ## 3) Standard Document Types
 
 1. Flow Spec (authoritative behavior):
@@ -61,6 +66,7 @@ This file defines:
 - Destination: `docs/runbooks/runbook-flow-XX.md`
 - Rule: each active flow SHOULD have one runbook with copy-pastable commands,
   expected results, and troubleshooting notes.
+- Rule: prefer generating from `docs/standarts/template-runbook-flow.md`.
 
 5. Methodology / Protocol / Process:
 - methodology -> `021_Flow_Specification_Methodology.md`

@@ -151,6 +151,18 @@ ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
 
 Fill placeholders in `host-library-infra/ansible/inventories/group_vars/zos_xplore.yml` before running on IBM Z XPlore.
 
+Host CI workflow (FLOW-02):
+
+- Workflow file: `.github/workflows/host-ci.yml`
+- Trigger: `workflow_dispatch` (manual) and host-related `push`/`pull_request` path filters
+- Required GitHub Secrets:
+  - `ZOS_HOST`
+  - `ZOS_SSH_USER`
+  - `ZOS_SSH_PRIVATE_KEY`
+  - `ZOS_HLQ`
+- Optional GitHub Variable:
+  - `ZOS_SSH_PORT` (defaults to `22`)
+
 ## Docs Index
 
 - Docs index: `docs/README.md`

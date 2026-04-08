@@ -38,6 +38,27 @@ ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
   --ask-pass
 ```
 
+## GitHub Actions Host CI (FLOW-02 / F02-A)
+
+Dedicated workflow:
+- `.github/workflows/host-ci.yml`
+
+Required repository secrets:
+- `ZOS_HOST`
+- `ZOS_SSH_USER`
+- `ZOS_SSH_PRIVATE_KEY`
+- `ZOS_HLQ`
+
+Optional repository variable:
+- `ZOS_SSH_PORT` (default `22`)
+
+Current strategy is intentionally simple:
+- use GitHub-hosted runner with SSH connectivity precheck,
+- fail fast on missing secrets or unreachable host.
+
+If network/IP allowlist issues appear later, handle as a separate improvement
+block (self-hosted runner, dynamic IP ranges, or VPN/tunnel model).
+
 ## Host Compile/Deploy (Ansible)
 
 From repo root:

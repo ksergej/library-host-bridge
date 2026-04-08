@@ -1,6 +1,6 @@
 # FLOW-02 — CI/CD Host Pipeline (Ansible + JCL on IBM Z Xplore)
 
-Status: draft  
+Status: active  
 Last updated: 2026-04-08  
 Scope: host-only pipeline (`host-library-infra`) for z/OS COBOL/MQ/DB2 delivery and smoke execution.
 
@@ -58,9 +58,10 @@ host-library-infra/
 ```
 
 Notes:
-- Current GitHub Actions workflows in repo are `.github/workflows/ci.yml` and
-  `.github/workflows/deploy.yml` (ECS deployment). There is no active
-  `host-ci.yml` yet.
+- Current GitHub Actions workflows include:
+  - `.github/workflows/ci.yml`
+  - `.github/workflows/deploy.yml` (ECS deployment)
+  - `.github/workflows/host-ci.yml` (host pipeline contract for FLOW-02)
 - Host inventory/group vars are under `host-library-infra/ansible/inventories`.
 
 ## 3) Inputs and configuration
@@ -175,11 +176,10 @@ ansible-playbook -i inventories/hosts.yml playbooks/smoke.yml
 
 These items are not fully implemented yet:
 
-1. No dedicated `.github/workflows/host-ci.yml` that executes host Ansible flow.
-2. No centralized artifact harvesting (spool/listings/load evidence) in repo as a
+1. No centralized artifact harvesting (spool/listings/load evidence) in repo as a
    dedicated `host_collect_artifacts` playbook.
-3. Runtime smoke is not part of current `smoke.yml` import chain by default.
-4. Optional MQSC health checks exist as JCL assets, but are not wired into the
+2. Runtime smoke is not part of current `smoke.yml` import chain by default.
+3. Optional MQSC health checks exist as JCL assets, but are not wired into the
    Ansible smoke sequence.
 
 ## 8) Correlation rule (must not change)

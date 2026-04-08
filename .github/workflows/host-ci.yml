@@ -1,0 +1,148 @@
+name: Host CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_runtime_smoke:
+        description: "Run runtime host smoke step (playbooks/run_host.yml)"
+        required: false
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - "host-library-infra/**"
+      - "docs/flows/flow-02/**"
+      - ".github/workflows/host-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "host-library-infra/**"
+      - "docs/flows/flow-02/**"
+      - ".github/workflows/host-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  host-ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      ZOS_HOST: ${{ secrets.ZOS_HOST }}
+      ZOS_SSH_USER: ${{ secrets.ZOS_SSH_USER }}
+      ZOS_SSH_PRIVATE_KEY: ${{ secrets.ZOS_SSH_PRIVATE_KEY }}
+      ZOS_SSH_PORT: ${{ vars.ZOS_SSH_PORT || '22' }}
+      ZOS_HLQ: ${{ secrets.ZOS_HLQ }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required host config
+        run: |
+          set -euo pipefail
+          missing=0
+          if [[ -z "${ZOS_HOST}" ]]; then
+            echo "::error::Missing required secret ZOS_HOST"
+            missing=1
+          fi
+          if [[ -z "${ZOS_SSH_USER}" ]]; then
+            echo "::error::Missing required secret ZOS_SSH_USER"
+            missing=1
+          fi
+          if [[ -z "${ZOS_SSH_PRIVATE_KEY}" ]]; then
+            echo "::error::Missing required secret ZOS_SSH_PRIVATE_KEY"
+            missing=1
+          fi
+          if [[ -z "${ZOS_HLQ}" ]]; then
+            echo "::error::Missing required secret ZOS_HLQ"
+            missing=1
+          fi
+          if [[ "$missing" -ne 0 ]]; then
+            exit 1
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Ansible and z/OS collection
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install "ansible-core==2.17.*"
+          ansible-galaxy collection install ibm.ibm_zos_core
+
+      - name: Configure SSH key and known_hosts
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          echo "${ZOS_SSH_PRIVATE_KEY}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p "${ZOS_SSH_PORT}" "${ZOS_HOST}" >> ~/.ssh/known_hosts
+
+      # Keep it simple for now: hard fail if CI runner cannot reach host over SSH.
+      # If IP allowlist constraints appear later, evaluate: GitHub IP-range sync,
+      # self-hosted runner, or VPN/tunnel model.
+      - name: Connectivity precheck (SSH)
+        run: |
+          set -euo pipefail
+          ssh -o BatchMode=yes \
+              -o StrictHostKeyChecking=accept-new \
+              -o ConnectTimeout=20 \
+              -p "${ZOS_SSH_PORT}" \
+              "${ZOS_SSH_USER}@${ZOS_HOST}" \
+              "whoami && uname -a && pwd"
+
+      - name: Prepare CI inventory and vars
+        run: |
+          set -euo pipefail
+          cat > host-library-infra/ansible/inventories/hosts.ci.yml <<YAML
+          all:
+            children:
+              zos_xplore:
+                hosts:
+                  zos1:
+                    ansible_host: ${ZOS_HOST}
+          YAML
+
+          cat > host-library-infra/ansible/.ci.extra-vars.yml <<YAML
+          ansible_user: "${ZOS_SSH_USER}"
+          ansible_port: ${ZOS_SSH_PORT}
+          ansible_ssh_private_key_file: "${HOME}/.ssh/id_rsa"
+          hlq: "${ZOS_HLQ}"
+          YAML
+
+      - name: Host syntax checks (fail-fast)
+        run: |
+          set -euo pipefail
+          cd host-library-infra/ansible
+          ansible-playbook -i inventories/hosts.ci.yml \
+            playbooks/library_deploy.yml --syntax-check -e @.ci.extra-vars.yml
+          ansible-playbook -i inventories/hosts.ci.yml \
+            playbooks/smoke.yml --syntax-check -e @.ci.extra-vars.yml
+
+      - name: Run host pipeline (deploy -> db2 -> compile)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          set -euo pipefail
+          cd host-library-infra/ansible
+          ansible-playbook -i inventories/hosts.ci.yml \
+            playbooks/library_deploy.yml -e @.ci.extra-vars.yml
+          ansible-playbook -i inventories/hosts.ci.yml \
+            playbooks/db2_schema.yml -e @.ci.extra-vars.yml
+          ansible-playbook -i inventories/hosts.ci.yml \
+            playbooks/db2_data.yml -e @.ci.extra-vars.yml
+          ansible-playbook -i inventories/hosts.ci.yml \
+            playbooks/compile_host.yml -e @.ci.extra-vars.yml
+
+      - name: Optional runtime smoke (run_host)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_runtime_smoke == 'true'
+        run: |
+          set -euo pipefail
+          cd host-library-infra/ansible
+          ansible-playbook -i inventories/hosts.ci.yml \
+            playbooks/run_host.yml -e @.ci.extra-vars.yml

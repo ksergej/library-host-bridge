@@ -77,7 +77,6 @@ Implemented baseline:
 - `host-library-infra/ansible/templates/jcl/LIBMQTST.jcl.j2`
 
 Known current gaps:
-- No dedicated host GitHub Actions workflow (`.github/workflows/host-ci.yml`).
 - No explicit artifact collection playbook for spool/listings/load evidence.
 - `run_host.yml` currently not imported in `smoke.yml` by default.
 
@@ -86,6 +85,8 @@ Known current gaps:
 ---
 
 ## Block F02-A — Lock Host CI Contract in GitHub Actions
+
+Status: done (2026-04-08)
 
 ### Goal
 Introduce a dedicated host CI workflow that runs Ansible host pipeline steps.
@@ -104,6 +105,13 @@ Introduce a dedicated host CI workflow that runs Ansible host pipeline steps.
 - host workflow exists and is runnable via `workflow_dispatch`,
 - required env/secrets are explicitly validated,
 - pipeline fails fast on missing config.
+
+### Delivered
+- `.github/workflows/host-ci.yml` added as dedicated FLOW-02 host CI workflow.
+- Contract checks implemented for required secrets (`ZOS_HOST`, `ZOS_SSH_USER`,
+  `ZOS_SSH_PRIVATE_KEY`, `ZOS_HLQ`).
+- Connectivity precheck over SSH added before Ansible execution.
+- Host Ansible syntax checks and deterministic playbook order are defined.
 
 ### Reject conditions
 - workflow depends on hardcoded credentials,

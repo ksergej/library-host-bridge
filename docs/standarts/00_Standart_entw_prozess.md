@@ -13,6 +13,7 @@ Core rule:
 1. Do not edit `PROJECT_TODO_*.md` unless explicitly requested.
 2. Keep flow spec and flow todo aligned.
 3. Keep flow runbook aligned with flow behavior (`docs/runbooks/runbook-flow-XX.md`).
+   - default structure source: `docs/standarts/template-runbook-flow.md`.
 4. One commit block = one logically complete TODO block (or clearly scoped subset).
 5. Run required checks before closing a block.
 6. Record acceptance evidence in commit/PR notes.
@@ -26,6 +27,10 @@ Read at minimum:
 - relevant flow spec: `docs/flows/flow-XX/spec/...`
 - flow execution plan: `docs/flows/flow-XX/todo/todo.md`
 - flow runbook (if exists): `docs/runbooks/runbook-flow-XX.md`
+
+If runbook is missing for an active flow:
+- create it from `docs/standarts/template-runbook-flow.md`,
+- add canonical command path and acceptance checks from the flow TODO blocks.
 
 ### Step 2 — Select target block in `todo.md`
 Pick one block from `todo.md` and execute only that scope.

@@ -12,6 +12,8 @@ blocks (not separate task docs per TODO item).
 3. flow spec: `docs/flows/flow-XX/spec/...`
 4. flow execution plan: `docs/flows/flow-XX/todo/todo.md`
 5. flow runbook (if available): `docs/runbooks/runbook-flow-XX.md`
+   - if absent and flow is active, create from
+     `docs/standarts/template-runbook-flow.md`.
 
 ## 2) Default Definition of Done
 
@@ -74,3 +76,5 @@ Acceptance:
 - `docs/flows/flow-XX/tasks/` is optional and used only by explicit request.
 - By default, all required implementation details and criteria stay in
   `docs/flows/flow-XX/todo/todo.md`.
+- Runbooks are operational docs and SHOULD follow
+  `docs/standarts/template-runbook-flow.md`.
