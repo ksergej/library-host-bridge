@@ -20,6 +20,7 @@
       zos_job_submit:
         src: "{{ jcl_pds }}({{ item }})"
         location: data_set
+        max_rc: "{{ max_rc }}"
         wait_time_s: "{{ wait_time_s }}"
         return_output: true
       register: compile_job

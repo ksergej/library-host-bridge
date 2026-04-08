@@ -41,7 +41,7 @@ pipeline:
   max_rc:
     schema: 0
     data: 0
-    compile: 8
+    compile: 4
     run: 0
 
   wait_time_s:
