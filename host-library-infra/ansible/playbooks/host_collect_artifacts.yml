@@ -51,7 +51,16 @@
             (job_evidence_index | default([]))
             + [ {
                   'name': item.item.name,
-                  'found': ((item.jobs | default([]) | length) > 0),
+                  'found': (
+                    (item.jobs | default([]) | length) > 0
+                    and (((item.jobs | default([]) | first).job_id | default('')) not in ['', '*'])
+                    and (
+                      (
+                        ((item.jobs | default([]) | first).ret_code.msg | default('N/A'))
+                        | upper
+                      ) != 'JOB NOT FOUND'
+                    )
+                  ),
                   'job_id': (((item.jobs | default([]) | first).job_id)
                              if ((item.jobs | default([]) | length) > 0)
                              else ''),
@@ -99,7 +108,10 @@
 
     - name: Write collected job spool/output json files
       ansible.builtin.copy:
-        dest: "{{ artifact_jobs_dir }}/{{ item.item.name }}-{{ item.item.job_id }}.json"
+        dest: >-
+          {{ artifact_jobs_dir }}/
+          {{ (item.item.name | default('UNKNOWN')) | regex_replace('[^A-Za-z0-9._-]', '_') }}-
+          {{ (item.item.job_id | default('UNKNOWN')) | regex_replace('[^A-Za-z0-9._-]', '_') }}.json
         mode: "0644"
         content: "{{ item | to_nice_json }}"
       delegate_to: localhost
