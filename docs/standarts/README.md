@@ -1,6 +1,6 @@
 # Flow Templates and Authoring Rules
 
-Status: draft (for review)
+Status: active
 
 ## 1) Purpose
 
@@ -10,83 +10,77 @@ This file defines:
 - mandatory authoring rules for new docs;
 - target destination paths for created documents.
 
-Use this file together with:
-- `docs/project/documentation-governance.md`
-
 ## 2) Template Catalog (Current Folder)
 
 ### A. Development process playbook
 - Template: `00_Standart_entw_prozess.md`
-- Use when: writing/refreshing the agent execution process (read docs -> create task -> implement -> test -> diff -> commit).
+- Use when: defining how agents execute flow work block-by-block from `todo.md`.
 - Output type: process guide.
 
 ### B. RFC / protocol style brief
 - Template: `01_rfc_protocol_spec_style_for_ai_agents.md`
-- Use when: preparing strict, normative task briefs with MUST/SHOULD/MAY rules.
-- Output type: implementation-ready requirement spec.
+- Use when: writing strict normative requirements (`MUST/SHOULD/MAY`).
+- Output type: implementation-ready requirement language.
 
 ### C. Flow specification methodology
 - Template: `021_Flow_Specification_Methodology.md`
-- Use when: documenting methodology and rationale for Flow spec structure.
+- Use when: documenting rationale for 11-section flow specs.
 - Output type: reference/methodology doc.
 
 ### D. Canonical Flow spec (11 sections)
 - Template: `02_Flow_Spec_Template.md`
-- Use when: creating a new flow spec from scratch.
+- Use when: creating a new authoritative flow spec.
 - Output type: `spec` document for one flow.
 
-### E. Codex workflow task packet
+### E. Codex workflow packet (todo-block mode)
 - Template: `03_CODEX_WORKFLOW_TASK_TEMPLATE.md`
-- Use when: preparing execution packets for coding agents.
-- Output type: task workflow packet / project ops template.
+- Use when: preparing execution packets where `todo.md` blocks are the primary implementation units.
+- Output type: execution packet template.
 
 ### F. PROJECT_CONTEXT_CHIT protocol
 - Template: `PROJECT_CONTEXT_CHIT_COMMIT.md`
 - Use when: documenting checkpoint/changelog meta-protocol.
 - Output type: protocol/reference doc.
 
-## 3) Standard Document Types and Which Template to Use
+## 3) Standard Document Types
 
-1. Flow Spec (authoritative flow behavior):
-- Use: `02_Flow_Spec_Template.md`
+1. Flow Spec (authoritative behavior):
 - Destination: `docs/flows/flow-XX/spec/`
-- Name format: `FLOWXX-Spec-<ShortName>.md`
+- Preferred name: `FLOW-XX_<SHORT_NAME>.md`
 
-2. Flow Task (implementation unit):
-- Base style: task structure from `00_Standart_entw_prozess.md`
-- Optional rigor overlay: sections from `01_rfc_protocol_spec_style_for_ai_agents.md`
-- Destination: `docs/flows/flow-XX/tasks/`
-- Name format: `FLOWXX-PY-<ShortName>.md`
+2. Flow TODO (authoritative execution plan):
+- Destination: `docs/flows/flow-XX/todo/todo.md`
+- Rule: this file MUST contain all implementation detail, checks, acceptance and reject criteria per block.
+- Rule: by default, no separate task doc per TODO item.
 
-3. Flow Todo/Roadmap/Addendum:
-- Use: concise structure from `01_rfc_protocol_spec_style_for_ai_agents.md`
-- Destination: `docs/flows/flow-XX/todo/`
-- Name format:
-  - `FLOWXX-Todo-<ShortName>.md`
-  - `FLOWXX-Addendum-<ShortName>.md`
+3. Flow tasks folder (`docs/flows/flow-XX/tasks/`):
+- Optional.
+- Use only when explicitly requested by owner/reviewer for a special case.
 
-4. Methodology / Protocol / Process:
-- Use:
-  - methodology -> `021_Flow_Specification_Methodology.md`
-  - process -> `00_Standart_entw_prozess.md`
-  - protocol -> `PROJECT_CONTEXT_CHIT_COMMIT.md`
-- Destination:
-  - project-level: `docs/project/`
-  - cross-flow shared: `docs/flows/_shared/`
+4. Flow Runbook (operational execution guide):
+- Destination: `docs/runbooks/runbook-flow-XX.md`
+- Rule: each active flow SHOULD have one runbook with copy-pastable commands,
+  expected results, and troubleshooting notes.
 
-## 4) Mandatory Header for New Docs
+5. Methodology / Protocol / Process:
+- methodology -> `021_Flow_Specification_Methodology.md`
+- process -> `00_Standart_entw_prozess.md`
+- protocol -> `PROJECT_CONTEXT_CHIT_COMMIT.md`
+
+## 4) Mandatory Header for New Flow Docs
 
 Every new flow doc MUST start with:
 - title
-- `Status: draft|in_progress|done|archived`
-- `Last updated: YYYY-MM-DD`
+- `Status: draft|active|in_progress|done|archived`
+- `Updated` or `Last updated` with date (`YYYY-MM-DD`)
 - short scope/context
 
-Task docs MUST also include:
+For `todo.md`, each execution block MUST include:
 - `Goal`
-- `Requirements`
-- `Acceptance`
-- `Validation` (copy-pastable command list)
+- `Scope`
+- `Required tests/checks`
+- `Acceptance criteria`
+- `Reject conditions`
 
 ## 5) Authoring Rules (Must Follow)
 
@@ -98,33 +92,25 @@ Task docs MUST also include:
 - include explicit out-of-scope list.
 
 3. No orphan docs:
-- link related task/spec/runbook files.
+- link related spec/runbook files.
 
 4. No undocumented completion:
 - `done` status requires validation command(s) and observed result.
 
 5. No legacy naming for new files:
-- do not create `Flow_`, `FLOW_`, `_v2`, mixed-case ad-hoc names.
-- use naming standard from `documentation-governance.md`.
+- do not create ad-hoc names like `Flow_`, `_v2`, mixed-case random patterns.
 
-## 6) Legacy Cleanup Rule
+## 6) Minimal Creation Checklist
 
-When editing old docs in `docs/flows_todo`:
-1. rename to standard name;
-2. move to `docs/flows/flow-XX/...`;
-3. set `Status`;
-4. add replacement link from old path during migration window.
-
-## 7) Minimal Creation Checklist
-
-Before creating any new doc:
-1. Choose type (Spec / Task / Todo / Addendum / Methodology).
-2. Select template from section 2.
-3. Save into correct flow folder.
-4. Apply naming standard.
-5. Add required header + validation section.
-6. Link related docs and tests.
+Before creating/updating flow docs:
+1. Confirm flow spec path (`docs/flows/flow-XX/spec/...`).
+2. Ensure `docs/flows/flow-XX/todo/todo.md` exists.
+3. Ensure flow runbook exists (`docs/runbooks/runbook-flow-XX.md`) or plan it as
+   an explicit TODO block.
+4. Put full executable criteria into TODO blocks (not separate per-point tasks).
+5. Add/refresh links to runbooks and tests.
+6. Keep naming consistent and stable.
 
 ---
 
-If this file conflicts with a flow-specific runbook, the runbook may add stricter rules, but must not weaken these rules.
+If a flow-specific runbook is stricter, it may add rules but must not weaken these rules.
