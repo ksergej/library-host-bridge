@@ -67,6 +67,34 @@ When these parameters change, this table MUST be updated in the same commit.
 | `pipeline.run_runtime_smoke_default` | `true` / `false` | Default runtime smoke switch used by `run_host.yml` when explicit override is not provided. |
 | `pipeline.collect_artifacts_default` | `true` / `false` | Policy default flag for artifact collection mode (documentation/contract flag for workflow policy). |
 
+## Inventory / Vars Security Contract
+
+The tracked inventory is intentionally safe to commit. Real environment values
+must come from CI secrets or local untracked overrides.
+
+| Source | Typical contents | Precedence / effect |
+| --- | --- | --- |
+| `host-library-infra/ansible/inventories/hosts.yml` | placeholder host entry for `zos_xplore` | baseline inventory structure committed to git |
+| `host-library-infra/ansible/inventories/group_vars/zos_xplore.yml` | placeholder HLQ, non-secret defaults, pipeline catalog | baseline defaults used when no override is supplied |
+| GitHub Actions `.ci.extra-vars.yml` | real `ansible_user`, `ansible_port`, `ansible_ssh_private_key_file`, `hlq` | overrides tracked defaults during `host-ci.yml` runs |
+| Local untracked override file | personal host/IP, local HLQ, environment-specific queue names | optional manual-run overlay via `-e @<file>` |
+
+Recommended manual override pattern when you have a local override file:
+
+```bash
+cd host-library-infra/ansible
+ansible-playbook -i inventories/hosts.yml playbooks/smoke.yml \
+  -e @inventories/group_vars/zos_xplore.local.yml
+```
+
+Notes:
+- `zos_xplore.local.yml` is intentionally ignored by git and is not stored in
+  this repository.
+- If you do not have a local override file, run the playbooks with the tracked
+  placeholders or provide the required values through `-e`/vault.
+- The effective order is: tracked defaults < local override file < CI secrets /
+  generated extra vars.
+
 ## Canonical Command Path (Local Operator)
 
 From repo root:

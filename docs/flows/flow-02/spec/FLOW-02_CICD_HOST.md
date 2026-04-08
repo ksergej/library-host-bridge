@@ -93,6 +93,14 @@ Notes:
 Primary host config source:
 - `host-library-infra/ansible/inventories/group_vars/zos_xplore.yml`
 
+Security / portability rule:
+- tracked inventory and `group_vars` MUST stay safe to commit; they may contain
+  placeholders and non-secret defaults only.
+- GitHub Actions injects real host credentials and HLQ through generated
+  `.ci.extra-vars.yml` from repository secrets.
+- Local operators MAY use an untracked override file passed with `-e @file`
+  when their Xplore environment differs from the tracked defaults.
+
 Key variable groups currently used:
 - SSH/runtime: `ansible_user`, `ansible_port`, `ansible_python_interpreter`,
   `environment_vars`.

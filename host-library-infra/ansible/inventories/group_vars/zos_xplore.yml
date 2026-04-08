@@ -1,7 +1,14 @@
-hlq: "Z88011"  # placeholder HLQ
+#
+# Tracked defaults only.
+# Real environment-specific values are injected by:
+# - GitHub Actions secrets via `.ci.extra-vars.yml`
+# - local untracked override vars passed with `-e @<file>`
+#
+
+hlq: "YOURHLQ"
 
 ansible_connection: ssh
-ansible_user: "Z88011"            # replace with your user
+ansible_user: "YOUR_ZOS_USER"
 ansible_port: 22
 ansible_ssh_private_key_file: "~/.ssh/id_ed25519"
 ansible_ssh_common_args: "-o StrictHostKeyChecking=accept-new"
@@ -66,15 +73,15 @@ db2:
   runlib: "SDSN.SDSNRUN"         # optional placeholder SDSNRUN
   dbrmlib: "{{ hlq }}.DBRMLIB"   # DBRM PDS/PDSE
   collection: "{{ hlq }}"        # used in BIND PKLIST(&COLL..*)
-  tablespace: "Z88011.Z88011S"
+  tablespace: "YOURHLQ.YOURHLQS"
 
 mq:
   loadlib: "CSQ920.SCSQLOAD"         # placeholder MQ loadlib (SCSQLOAD)
   cobol_copylib: "CSQ920.SCSQCOBC"   # IBM MQ for z/OS 9.2 COBOL copybooks (CMQ*V)
   cobcopylib: "CSQ920.SCSQCOBC"      # alias (preferred name in CBLMQDB2 template)
   qmgr: "CSQ9"
-  request_queue: "Z88011.MQZ3.QLOCAL"
-  reply_queue: "Z88011.MQZ3.REPLYTO.QLOCAL"
+  request_queue: "YOURHLQ.MQ.REQ"
+  reply_queue: "YOURHLQ.MQ.REPLY"
   wait_ms: 30000
 
 testdata:

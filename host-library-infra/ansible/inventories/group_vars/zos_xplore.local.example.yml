@@ -1,0 +1,22 @@
+# Local override example for IBM Z Xplore / personal host runs.
+#
+# Copy this file to `zos_xplore.local.yml` (untracked) and pass it explicitly:
+#
+#   ansible-playbook -i inventories/hosts.yml playbooks/smoke.yml \
+#     -e @inventories/group_vars/zos_xplore.local.yml
+#
+# Use this file only as a template. Keep real credentials out of git.
+
+ansible_host: "YOUR_XPLORE_HOST"
+ansible_user: "YOUR_ZOS_USER"
+ansible_port: 22
+ansible_ssh_private_key_file: "~/.ssh/id_ed25519"
+hlq: "YOURHLQ"
+
+# Optional local overrides if your Xplore setup differs from the defaults.
+# mq:
+#   qmgr: "QM1"
+#   request_queue: "YOURHLQ.MQ.REQ"
+#   reply_queue: "YOURHLQ.MQ.REPLY"
+# db2:
+#   subsystem: "DBDG"

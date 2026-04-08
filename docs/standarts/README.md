@@ -112,6 +112,13 @@ For `todo.md`, each execution block MUST include:
   Catalog" table.
 - any parameter change MUST update that table in the same PR/commit.
 
+7. Inventory and vars must be portable and safe:
+- tracked inventory/group vars MUST use placeholders or non-secret defaults;
+- environment-specific host values, HLQ, credentials, and secrets MUST come
+  from GitHub Secrets, local untracked overrides, or vault-managed inputs;
+- if a runbook describes override precedence, it MUST name the tracked source,
+  the override source, and the effective order explicitly.
+
 ## 6) Minimal Creation Checklist
 
 Before creating/updating flow docs:

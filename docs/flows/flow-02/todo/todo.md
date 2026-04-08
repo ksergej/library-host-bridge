@@ -265,6 +265,8 @@ Strengthen fail-fast checks and validation semantics for host pipeline.
 
 ## Block F02-E — Inventory/Vars Security and Portability
 
+Status: done (2026-04-08)
+
 ### Goal
 Make host inventory/vars portable across environments without secret leakage.
 
@@ -281,6 +283,20 @@ Make host inventory/vars portable across environments without secret leakage.
 ### Acceptance criteria
 - repo is safely clonable without secret edits,
 - host operators can configure env with clear procedure.
+
+### Delivered
+- Tracked inventory now uses placeholder host/IP and placeholder HLQ/user
+  values instead of environment-specific constants.
+- Added untracked local override example:
+  `host-library-infra/ansible/inventories/group_vars/zos_xplore.local.example.yml`.
+- Added `.gitignore` entry for the local override file path
+  `host-library-infra/ansible/inventories/group_vars/zos_xplore.local.yml`.
+- Documented override precedence and tracked-vs-secret source contract in:
+  - `docs/flows/flow-02/spec/FLOW-02_CICD_HOST.md`
+  - `docs/runbooks/runbook-flow-02.md`
+  - `docs/runbooks/HOST_SMOKE_AND_DEBUG.md`
+  - `docs/standarts/README.md`
+  - `docs/standarts/template-runbook-flow.md`
 
 ### Reject conditions
 - secret-like values in tracked files,

@@ -131,3 +131,4 @@ pnpm-debug.log*
 # Local secrets (do not commit)
 loan-command-service/src/main/resources/application-xplore.yml
 loan-query-service/src/main/resources/application-xplore.yml
+host-library-infra/ansible/inventories/group_vars/zos_xplore.local.yml

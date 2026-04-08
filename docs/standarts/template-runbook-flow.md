@@ -49,6 +49,17 @@ Ansible vars), add a single table here as the source of operational truth.
 | `<param.path>` | `<values>` | `<impact>` |
 | `<param.path>` | `<values>` | `<impact>` |
 
+## Inventory / Vars Security Contract (If Applicable)
+
+If this flow depends on tracked inventory or group vars, describe the split
+between safe defaults and environment-specific overrides.
+
+| Source | Typical contents | Effective precedence / notes |
+| --- | --- | --- |
+| Tracked inventory / `group_vars` | placeholder host/IP, safe dataset defaults, non-secret runtime switches | baseline source committed to git |
+| CI secrets / generated extra vars | real host, SSH user/key, HLQ, ephemeral workflow values | overrides tracked defaults in GitHub Actions |
+| Local untracked override file | personal host values or environment-specific test settings | used by operators for manual runs; MUST stay out of git |
+
 ## Canonical Command Path
 
 Run from repo root unless stated otherwise.
@@ -127,3 +138,5 @@ Update this runbook in the same PR/commit when changing:
 4. acceptance criteria,
 5. evidence locations.
 6. centralized pipeline parameters (update the parameter catalog table).
+7. inventory/vars contract (update the security/portability table when source
+   precedence or tracked defaults change).

@@ -26,7 +26,6 @@ CBL SQL NOXREF NOMAP NOOFFSET NOSOURCE
 
        01  WS-RESP                  PIC S9(8) COMP VALUE 0.
        01  WS-RESP2                 PIC S9(8) COMP VALUE 0.
-
        01  WS-QMGR-NAME             PIC X(48) VALUE 'CSQ9'.
        01  WS-REQ-QUEUE             PIC X(48)
                                     VALUE 'Z88011.MQZ3.QLOCAL'.
