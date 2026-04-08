@@ -10,11 +10,12 @@
     artifact_host_dir: "{{ artifact_base_dir }}/{{ artifact_id_resolved }}/{{ inventory_hostname }}"
     artifact_jobs_dir: "{{ artifact_host_dir }}/jobs"
     artifact_owner: "{{ ansible_user | default('') }}"
-    tracked_jobs:
+    tracked_jobs_default:
       - name: "LIBSCHEM"
       - name: "LIBDATA"
       - name: "CBLMQDB2"
       - name: "LIBMQTST"
+    tracked_jobs: "{{ pipeline.artifacts.tracked_jobs | default(tracked_jobs_default) }}"
 
   environment: "{{ environment_vars }}"
 

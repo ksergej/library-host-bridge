@@ -1,0 +1,22 @@
+---
+- name: Host SSH precheck (minimal handshake)
+  hosts: zos_xplore
+  gather_facts: false
+
+  vars:
+    run_runtime_ssh_precheck: "{{ pipeline.run_runtime_ssh_precheck | default(true) }}"
+
+  tasks:
+    - name: Run minimal SSH handshake
+      ansible.builtin.raw: "echo SSH_OK && whoami && pwd"
+      register: ssh_precheck
+      changed_when: false
+      failed_when: ssh_precheck.rc != 0
+      when: run_runtime_ssh_precheck | bool
+
+    - name: Show SSH precheck output
+      ansible.builtin.debug:
+        msg:
+          - "SSH precheck enabled={{ run_runtime_ssh_precheck | bool }}"
+          - "{{ ssh_precheck.stdout | default('') }}"
+      when: run_runtime_ssh_precheck | bool

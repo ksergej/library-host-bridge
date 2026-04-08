@@ -150,9 +150,13 @@ jobs:
           set -euo pipefail
           cd host-library-infra/ansible
           ansible-playbook -i inventories/hosts.ci.yml \
+            playbooks/ssh_precheck.yml --syntax-check -e @.ci.extra-vars.yml
+          ansible-playbook -i inventories/hosts.ci.yml \
             playbooks/library_deploy.yml --syntax-check -e @.ci.extra-vars.yml
           ansible-playbook -i inventories/hosts.ci.yml \
             playbooks/smoke.yml --syntax-check -e @.ci.extra-vars.yml
+          ansible-playbook -i inventories/hosts.ci.yml \
+            playbooks/smoke-full.yml --syntax-check -e @.ci.extra-vars.yml
           ansible-playbook -i inventories/hosts.ci.yml \
             playbooks/host_collect_artifacts.yml --syntax-check -e @.ci.extra-vars.yml
 
@@ -161,6 +165,8 @@ jobs:
         run: |
           set -euo pipefail
           cd host-library-infra/ansible
+          ansible-playbook -i inventories/hosts.ci.yml \
+            playbooks/ssh_precheck.yml -e @.ci.extra-vars.yml
           ansible-playbook -i inventories/hosts.ci.yml \
             playbooks/library_deploy.yml -e @.ci.extra-vars.yml
           ansible-playbook -i inventories/hosts.ci.yml \
@@ -175,6 +181,8 @@ jobs:
         run: |
           set -euo pipefail
           cd host-library-infra/ansible
+          ansible-playbook -i inventories/hosts.ci.yml \
+            playbooks/ssh_precheck.yml -e @.ci.extra-vars.yml
           ansible-playbook -i inventories/hosts.ci.yml \
             playbooks/library_deploy.yml -e @.ci.extra-vars.yml
           ansible-playbook -i inventories/hosts.ci.yml \

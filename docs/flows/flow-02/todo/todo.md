@@ -41,8 +41,11 @@ Baseline checks:
 ```bash
 # Ansible syntax validation
 cd host-library-infra/ansible
+ansible-playbook -i inventories/hosts.yml playbooks/ssh_precheck.yml --syntax-check
 ansible-playbook -i inventories/hosts.yml playbooks/library_deploy.yml --syntax-check
 ansible-playbook -i inventories/hosts.yml playbooks/smoke.yml --syntax-check
+ansible-playbook -i inventories/hosts.yml playbooks/smoke-full.yml --syntax-check
+ansible-playbook -i inventories/hosts.yml playbooks/host_collect_artifacts.yml --syntax-check
 
 # Java safety net (run when Java side is touched)
 cd ../../
@@ -53,6 +56,7 @@ Host runtime checks (when block touches actual host execution):
 
 ```bash
 cd host-library-infra/ansible
+ansible-playbook -i inventories/hosts.yml playbooks/ssh_precheck.yml
 ansible-playbook -i inventories/hosts.yml playbooks/library_deploy.yml
 ansible-playbook -i inventories/hosts.yml playbooks/db2_schema.yml
 ansible-playbook -i inventories/hosts.yml playbooks/db2_data.yml
@@ -63,12 +67,15 @@ ansible-playbook -i inventories/hosts.yml playbooks/run_host.yml
 ## 3. Existing Baseline (Current Repo State)
 
 Implemented baseline:
+- `host-library-infra/ansible/playbooks/ssh_precheck.yml`
 - `host-library-infra/ansible/playbooks/library_deploy.yml`
 - `host-library-infra/ansible/playbooks/db2_schema.yml`
 - `host-library-infra/ansible/playbooks/db2_data.yml`
 - `host-library-infra/ansible/playbooks/compile_host.yml`
 - `host-library-infra/ansible/playbooks/run_host.yml`
 - `host-library-infra/ansible/playbooks/smoke.yml`
+- `host-library-infra/ansible/playbooks/smoke-full.yml`
+- `host-library-infra/ansible/playbooks/host_collect_artifacts.yml`
 - `host-library-infra/ansible/templates/jcl/CBLMQDB2.jcl.j2`
 - `host-library-infra/ansible/templates/jcl/LIBSCHEMA.jcl.j2`
 - `host-library-infra/ansible/templates/jcl/LIBDATA.jcl.j2`
@@ -86,7 +93,7 @@ Note:
   first minimal smoke scope.
 
 Known current gaps:
-- `run_host.yml` currently not imported in `smoke.yml` by default.
+- optional MQSC health checks are not wired into smoke chain yet.
 
 ## 4. Atomic Commit Blocks (FLOW-02)
 
@@ -122,7 +129,8 @@ Introduce a dedicated host CI workflow that runs Ansible host pipeline steps.
 - Host Ansible syntax checks and deterministic playbook order are defined.
 - Push debug mode added:
   - when push contains COBOL changes and no DB2 changes, CI runs
-    `library_deploy -> compile_host -> run_host` (without `db2_schema/db2_data`).
+    `ssh_precheck -> library_deploy -> compile_host -> run_host`
+    (without `db2_schema/db2_data`).
 
 ### Reject conditions
 - workflow depends on hardcoded credentials,
@@ -174,6 +182,8 @@ Collect and persist host run evidence for compile/schema/data/run steps.
 
 ## Block F02-C — Runtime Smoke Integration Policy
 
+Status: done (2026-04-08)
+
 ### Goal
 Define and implement stable policy for `run_host.yml` in smoke chain.
 
@@ -192,6 +202,13 @@ Define and implement stable policy for `run_host.yml` in smoke chain.
 - no ambiguity whether runtime smoke is default,
 - commands in docs match real playbook chain.
 
+### Delivered
+- `smoke.yml` fixed as default policy: `deploy -> db2_schema -> db2_data -> compile`
+  (no runtime run by default).
+- Added `smoke-full.yml` as explicit full chain:
+  `smoke.yml + run_host + host_collect_artifacts`.
+- Updated docs/spec/runbook with explicit smoke policy and commands.
+
 ### Reject conditions
 - `smoke.yml` and docs diverge,
 - runtime step toggled implicitly with no contract.
@@ -199,6 +216,8 @@ Define and implement stable policy for `run_host.yml` in smoke chain.
 ---
 
 ## Block F02-D — DB2/MQ Validation Hardening
+
+Status: done (2026-04-08)
 
 ### Goal
 Strengthen fail-fast checks and validation semantics for host pipeline.
@@ -216,6 +235,20 @@ Strengthen fail-fast checks and validation semantics for host pipeline.
 ### Acceptance criteria
 - each stage has explicit RC/validation contract,
 - failures are actionable from logs.
+
+### Delivered
+- Added centralized pipeline parameter catalog in
+  `inventories/group_vars/zos_xplore.yml`:
+  - `pipeline.max_rc.{schema,data,compile,run}`
+  - `pipeline.wait_time_s.{schema,data,compile,run}`
+  - `pipeline.artifacts.tracked_jobs`
+- Updated playbooks to consume centralized thresholds/timeouts:
+  - `db2_schema.yml`
+  - `db2_data.yml`
+  - `compile_host.yml`
+  - `run_host.yml`
+- Replaced silent `failed_when`-only behavior with explicit fail messages on RC
+  policy breaches for actionable diagnostics.
 
 ### Reject conditions
 - failures swallowed by permissive max_rc,

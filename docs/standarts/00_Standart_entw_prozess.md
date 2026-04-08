@@ -14,6 +14,9 @@ Core rule:
 2. Keep flow spec and flow todo aligned.
 3. Keep flow runbook aligned with flow behavior (`docs/runbooks/runbook-flow-XX.md`).
    - default structure source: `docs/standarts/template-runbook-flow.md`.
+   - if flow has centralized pipeline parameters (for example `pipeline.*`),
+     maintain a runbook parameter catalog table and update it in the same commit
+     as parameter changes.
 4. One commit block = one logically complete TODO block (or clearly scoped subset).
 5. Run required checks before closing a block.
 6. Record acceptance evidence in commit/PR notes.

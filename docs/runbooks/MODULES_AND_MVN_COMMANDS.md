@@ -165,7 +165,22 @@ Host automation commands:
 
 ```
 ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
+  host-library-infra/ansible/playbooks/ssh_precheck.yml
+```
+
+```
+ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
   host-library-infra/ansible/playbooks/library_deploy.yml
+```
+
+```
+ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
+  host-library-infra/ansible/playbooks/db2_schema.yml
+```
+
+```
+ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
+  host-library-infra/ansible/playbooks/db2_data.yml
 ```
 
 ```
@@ -176,6 +191,22 @@ ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
 ```
 ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
   host-library-infra/ansible/playbooks/run_host.yml
+```
+
+```
+ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
+  host-library-infra/ansible/playbooks/smoke.yml
+```
+
+```
+ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
+  host-library-infra/ansible/playbooks/smoke-full.yml
+```
+
+```
+ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
+  host-library-infra/ansible/playbooks/host_collect_artifacts.yml \
+  -e artifact_id="$(date +%Y%m%dT%H%M%S)"
 ```
 
 ## Smoke Scenarios

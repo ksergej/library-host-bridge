@@ -6,7 +6,8 @@
   vars:
     jcl_pds: "{{ hlq }}.JCL"
     run_member: "LIBMQTST"
-    max_rc_run: 0
+    max_rc_run: "{{ pipeline.max_rc.run | default(0) }}"
+    wait_time_s: "{{ pipeline.wait_time_s.run | default(300) }}"
 
   environment: "{{ environment_vars }}"
 
@@ -18,11 +19,18 @@
       zos_job_submit:
         src: "{{ jcl_pds }}({{ run_member }})"
         location: data_set
-        wait_time_s: 300
+        wait_time_s: "{{ wait_time_s }}"
         return_output: true
-        max_rc: "{{ max_rc_run }}"
       register: run_job
 
     - name: Show run RC
       debug:
-        msg: "Run RC={{ run_job.jobs[0].ret_code.msg }}"
+        msg: "Run RC={{ run_job.jobs[0].ret_code.msg }} (max_rc={{ max_rc_run }})"
+
+    - name: Fail if run RC exceeds threshold
+      ansible.builtin.fail:
+        msg: >-
+          Run job {{ run_member }} failed RC policy:
+          RC={{ run_job.jobs[0].ret_code.msg }},
+          threshold={{ max_rc_run }}.
+      when: run_job.jobs[0].ret_code.code|int > max_rc_run|int

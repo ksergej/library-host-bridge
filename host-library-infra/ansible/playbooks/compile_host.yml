@@ -7,7 +7,8 @@
     jcl_pds: "{{ hlq }}.JCL"
     compile_members:
       - "CBLMQDB2"
-    max_rc: 8
+    max_rc: "{{ pipeline.max_rc.compile | default(8) }}"
+    wait_time_s: "{{ pipeline.wait_time_s.compile | default(300) }}"
 
   environment: "{{ environment_vars }}"
 
@@ -19,13 +20,21 @@
       zos_job_submit:
         src: "{{ jcl_pds }}({{ item }})"
         location: data_set
-        wait_time_s: 300
+        wait_time_s: "{{ wait_time_s }}"
         return_output: true
       register: compile_job
-      failed_when: compile_job.jobs[0].ret_code.code|int > max_rc
       loop: "{{ compile_members }}"
 
     - name: Show compile RCs
       debug:
         msg: "{{ item.item }} RC={{ item.jobs[0].ret_code.msg }}"
+      loop: "{{ compile_job.results }}"
+
+    - name: Fail if compile RC exceeds threshold
+      ansible.builtin.fail:
+        msg: >-
+          Compile job {{ item.item }} failed RC policy:
+          RC={{ item.jobs[0].ret_code.msg }},
+          threshold={{ max_rc }}.
+      when: item.jobs[0].ret_code.code|int > max_rc|int
       loop: "{{ compile_job.results }}"

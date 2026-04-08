@@ -54,6 +54,7 @@ host-library-infra/
       LIBMQTSTC.jcl.j2
       BINDPLAN.jcl.j2
     playbooks/
+      ssh_precheck.yml
       library_deploy.yml
       db2_schema.yml
       db2_data.yml
@@ -61,6 +62,7 @@ host-library-infra/
       run_host.yml
       host_collect_artifacts.yml
       smoke.yml
+      smoke-full.yml
       library_tests.yml
 ```
 
@@ -71,10 +73,11 @@ Notes:
   - `.github/workflows/host-ci.yml` (host pipeline contract for FLOW-02)
 - Host inventory/group vars are under `host-library-infra/ansible/inventories`.
 - `host-ci.yml` has two execution modes:
-  - `workflow_dispatch`: full path `deploy -> db2_schema -> db2_data -> compile`
+  - `workflow_dispatch`: full path
+    `ssh_precheck -> deploy -> db2_schema -> db2_data -> compile`
     and optional `run_host` by input flag.
   - `push` with COBOL-only changes (without DB2 changes): debug path
-    `deploy -> compile -> run` (DB2 steps skipped).
+    `ssh_precheck -> deploy -> compile -> run` (DB2 steps skipped).
 
 ## 3) Inputs and configuration
 
@@ -91,10 +94,26 @@ Key variable groups currently used:
   `mq.loadlib`, `mq.cobcopylib`.
 - Compiler/runtime libs: `cobol.compiler_loadlib`, `le.runlib`, `le.runlib2`,
   `le.linklib`, `cics.loadlib`, `cics.copylib`.
+- Pipeline control catalog (`pipeline.*`):
+  - `pipeline.run_runtime_ssh_precheck`
+  - `pipeline.max_rc.{schema,data,compile,run}`
+  - `pipeline.wait_time_s.{schema,data,compile,run}`
+  - `pipeline.run_runtime_smoke_default`
+  - `pipeline.collect_artifacts_default`
+  - `pipeline.artifacts.tracked_jobs`
 
 ## 4) Canonical pipeline steps
 
-### Step A — deploy datasets and sources
+### Step A — SSH precheck
+
+Playbook: `host-library-infra/ansible/playbooks/ssh_precheck.yml`
+
+- Runs minimal host handshake over SSH (`SSH_OK`, `whoami`, `pwd`).
+- Uses pipeline switches:
+  - `pipeline.run_runtime_ssh_precheck`
+- Fails fast on non-zero RC.
+
+### Step B — deploy datasets and sources
 
 Playbook: `host-library-infra/ansible/playbooks/library_deploy.yml`
 
@@ -113,21 +132,21 @@ What it does:
   - `{{ hlq }}.SQL(SCHEMA)`
   - `{{ hlq }}.SQL(TESTDATA)`
 
-### Step B — DB2 schema
+### Step C — DB2 schema
 
 Playbook: `host-library-infra/ansible/playbooks/db2_schema.yml`
 
 - Submits `{{ hlq }}.JCL(LIBSCHEM)`.
 - Requires `RC == 0`.
 
-### Step C — DB2 test data
+### Step D — DB2 test data
 
 Playbook: `host-library-infra/ansible/playbooks/db2_data.yml`
 
 - Submits `{{ hlq }}.JCL(LIBDATA)`.
 - Requires `RC == 0`.
 
-### Step D — compile/link/bind host program
+### Step E — compile/link/bind host program
 
 Playbook: `host-library-infra/ansible/playbooks/compile_host.yml`
 
@@ -135,7 +154,7 @@ Playbook: `host-library-infra/ansible/playbooks/compile_host.yml`
   - `{{ hlq }}.JCL(CBLMQDB2)` for `LIBMQTST`
 - Current acceptance in playbook: `max_rc = 8`.
 
-### Step E — optional run smoke
+### Step F — optional run smoke
 
 Playbook: `host-library-infra/ansible/playbooks/run_host.yml`
 
@@ -143,11 +162,11 @@ Playbook: `host-library-infra/ansible/playbooks/run_host.yml`
 - Requires `RC == 0`.
 
 Important:
-- `smoke.yml` currently imports deploy + db2 + compile only.
-- `run_host.yml` is currently commented out in `smoke.yml` and must be run
-  separately when runtime smoke is needed.
+- `smoke.yml` is default path: `deploy + db2 + compile` (no run).
+- `smoke-full.yml` is explicit full path:
+  `smoke.yml + run_host + host_collect_artifacts`.
 
-### Step F — artifact collection (spool/evidence)
+### Step G — artifact collection (spool/evidence)
 
 Playbook: `host-library-infra/ansible/playbooks/host_collect_artifacts.yml`
 
@@ -165,6 +184,9 @@ Playbook: `host-library-infra/ansible/playbooks/host_collect_artifacts.yml`
 From repo root:
 
 ```bash
+ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
+  host-library-infra/ansible/playbooks/ssh_precheck.yml
+
 ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
   host-library-infra/ansible/playbooks/library_deploy.yml
 
@@ -189,6 +211,9 @@ Or combined (without runtime step at the moment):
 ```bash
 cd host-library-infra/ansible
 ansible-playbook -i inventories/hosts.yml playbooks/smoke.yml
+
+# explicit full smoke (includes run + artifact collection)
+ansible-playbook -i inventories/hosts.yml playbooks/smoke-full.yml
 ```
 
 ## 6) Determinism and validation rules
@@ -203,8 +228,7 @@ ansible-playbook -i inventories/hosts.yml playbooks/smoke.yml
 
 These items are not fully implemented yet:
 
-1. Runtime smoke is not part of current `smoke.yml` import chain by default.
-2. Optional MQSC health checks exist as JCL assets, but are not wired into the
+1. Optional MQSC health checks exist as JCL assets, but are not wired into the
    Ansible smoke sequence.
 
 ## 8) Correlation rule (must not change)

@@ -11,6 +11,9 @@ This runbook targets developers running real host smoke/integration tests agains
 5) No secrets in git. Use local overrides, environment variables, and `*.example.yml` files.
 6) Host deploy pipeline minimal scope compiles:
    - `LIBMQTST` via `CBLMQDB2`
+7) Pipeline RC/wait policy is centralized in:
+   - `host-library-infra/ansible/inventories/group_vars/zos_xplore.yml`
+   - `pipeline.max_rc.*` and `pipeline.wait_time_s.*`
 
 ## Host Access Configuration
 
@@ -55,8 +58,8 @@ Current strategy is intentionally simple:
 - use GitHub-hosted runner with SSH connectivity precheck,
 - fail fast on missing secrets or unreachable host.
 - CI execution modes:
-  - `workflow_dispatch`: full path (`deploy -> db2_schema -> db2_data -> compile_host`, optional `run_host`)
-  - `push` with COBOL-only changes (no DB2 changes): debug path (`deploy -> compile_host -> run_host`)
+  - `workflow_dispatch`: full path (`ssh_precheck -> deploy -> db2_schema -> db2_data -> compile_host`, optional `run_host`)
+  - `push` with COBOL-only changes (no DB2 changes): debug path (`ssh_precheck -> deploy -> compile_host -> run_host`)
 
 If network/IP allowlist issues appear later, handle as a separate improvement
 block (self-hosted runner, dynamic IP ranges, or VPN/tunnel model).
@@ -64,6 +67,11 @@ block (self-hosted runner, dynamic IP ranges, or VPN/tunnel model).
 ## Host Compile/Deploy (Ansible)
 
 From repo root:
+
+```
+ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
+  host-library-infra/ansible/playbooks/ssh_precheck.yml
+```
 
 ```
 ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
@@ -88,6 +96,13 @@ Optional batch run (`LIBMQTST`):
 ```
 ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
   host-library-infra/ansible/playbooks/run_host.yml
+```
+
+Full smoke chain in one command:
+
+```
+ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
+  host-library-infra/ansible/playbooks/smoke-full.yml
 ```
 
 Artifact collection (spool/evidence; can be run after failed stages):

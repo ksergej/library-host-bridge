@@ -139,6 +139,20 @@ ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
   host-library-infra/ansible/playbooks/smoke.yml
 ```
 
+Run minimal SSH precheck explicitly (recommended before manual runs):
+
+```
+ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
+  host-library-infra/ansible/playbooks/ssh_precheck.yml
+```
+
+Run full smoke (includes runtime run + artifact collection):
+
+```
+ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
+  host-library-infra/ansible/playbooks/smoke-full.yml
+```
+
 Deploy-only + compile-only sequence:
 
 ```
@@ -158,14 +172,15 @@ ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
 ```
 
 Fill placeholders in `host-library-infra/ansible/inventories/group_vars/zos_xplore.yml` before running on IBM Z XPlore.
+RC/wait thresholds are controlled centrally via `pipeline.*` in the same vars file.
 
 Host CI workflow (FLOW-02):
 
 - Workflow file: `.github/workflows/host-ci.yml`
 - Trigger: `workflow_dispatch` (manual) and host-related `push`/`pull_request` path filters
 - CI modes:
-  - `workflow_dispatch`: full host path (`deploy -> db2 -> compile`, optional `run`)
-  - `push` (COBOL-only changes, no DB2 files): debug path (`deploy -> compile -> run`)
+  - `workflow_dispatch`: full host path (`ssh_precheck -> deploy -> db2 -> compile`, optional `run`)
+  - `push` (COBOL-only changes, no DB2 files): debug path (`ssh_precheck -> deploy -> compile -> run`)
 - Required GitHub Secrets:
   - `ZOS_HOST`
   - `ZOS_SSH_USER`
@@ -173,6 +188,27 @@ Host CI workflow (FLOW-02):
   - `ZOS_HLQ`
 - Optional GitHub Variable:
   - `ZOS_SSH_PORT` (defaults to `22`)
+
+## ECS Deploy Workflow Switches
+
+Workflow file: `.github/workflows/deploy.yml`.
+
+Current default is **disabled** (ECS is not configured yet).
+
+GitHub Variables (pipeline control):
+- `ECS_PIPELINE_ENABLED` (`true`/`false`, default `false`)  
+  Global gate for ECS build/deploy steps.
+- `ECS_RUN_ON_PUSH_MAIN` (`true`/`false`, default `false`)  
+  Allows automatic build+deploy on `push` to `main`.
+
+`workflow_dispatch` inputs:
+- `run_build` (default `false`) — run image build/push path.
+- `run_deploy` (default `false`) — run ECS deploy path (implies build/push).
+
+Effective behavior:
+- default state (`ECS_PIPELINE_ENABLED=false`): workflow run is no-op for ECS steps.
+- manual test without deploy: set `ECS_PIPELINE_ENABLED=true`, run `workflow_dispatch` with `run_build=true`, `run_deploy=false`.
+- full manual deploy: set `ECS_PIPELINE_ENABLED=true`, run `workflow_dispatch` with `run_deploy=true`.
 
 ## Docs Index
 

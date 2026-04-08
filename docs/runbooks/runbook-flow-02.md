@@ -41,6 +41,31 @@ MQ correlation rule is invariant and MUST stay unchanged:
 4. MQ/DB2 placeholder datasets and subsystem variables are set in group vars.
 5. No secrets are committed to git.
 
+## Unified Pipeline Parameter Catalog
+
+Single source of truth:
+- `host-library-infra/ansible/inventories/group_vars/zos_xplore.yml`
+- root key: `pipeline`
+
+This catalog defines runtime policy for host playbooks: RC thresholds, wait
+timeouts, artifact tracking, and default mode flags.  
+When these parameters change, this table MUST be updated in the same commit.
+
+| Parameter | Typical values | What changes / runtime effect |
+| --- | --- | --- |
+| `pipeline.max_rc.schema` | integer, usually `0` | RC threshold for `db2_schema.yml`. Job fails when `RC > threshold`. |
+| `pipeline.max_rc.data` | integer, usually `0` | RC threshold for `db2_data.yml`. Job fails when `RC > threshold`. |
+| `pipeline.max_rc.compile` | integer, usually `0..8` | RC threshold for `compile_host.yml` (`CBLMQDB2`). Lower value = stricter compile gate. |
+| `pipeline.max_rc.run` | integer, usually `0` | RC threshold for `run_host.yml` (`LIBMQTST`). |
+| `pipeline.wait_time_s.schema` | integer seconds, e.g. `300` | Wait timeout for DB2 schema job completion in `zos_job_submit`. |
+| `pipeline.wait_time_s.data` | integer seconds, e.g. `300` | Wait timeout for DB2 data job completion in `zos_job_submit`. |
+| `pipeline.wait_time_s.compile` | integer seconds, e.g. `300` | Wait timeout for compile job completion in `zos_job_submit`. |
+| `pipeline.wait_time_s.run` | integer seconds, e.g. `300` | Wait timeout for runtime job completion in `zos_job_submit`. |
+| `pipeline.artifacts.tracked_jobs` | list of job names, e.g. `LIBSCHEM`, `LIBDATA`, `CBLMQDB2`, `LIBMQTST` | Defines which jobs are queried/exported by `host_collect_artifacts.yml` into `summary.json` and per-job evidence files. |
+| `pipeline.run_runtime_ssh_precheck` | `true` / `false` | Runtime switch used by `ssh_precheck.yml`; when `false`, precheck task is skipped. |
+| `pipeline.run_runtime_smoke_default` | `true` / `false` | Policy default flag for runtime smoke mode (documentation/contract flag for workflow policy). |
+| `pipeline.collect_artifacts_default` | `true` / `false` | Policy default flag for artifact collection mode (documentation/contract flag for workflow policy). |
+
 ## Canonical Command Path (Local Operator)
 
 From repo root:
@@ -49,25 +74,34 @@ From repo root:
 cd host-library-infra/ansible
 
 # 1) syntax checks
+ansible-playbook -i inventories/hosts.yml playbooks/ssh_precheck.yml --syntax-check
 ansible-playbook -i inventories/hosts.yml playbooks/library_deploy.yml --syntax-check
 ansible-playbook -i inventories/hosts.yml playbooks/smoke.yml --syntax-check
+ansible-playbook -i inventories/hosts.yml playbooks/smoke-full.yml --syntax-check
+ansible-playbook -i inventories/hosts.yml playbooks/host_collect_artifacts.yml --syntax-check
 
-# 2) deploy datasets + members
+# 2) SSH handshake precheck
+ansible-playbook -i inventories/hosts.yml playbooks/ssh_precheck.yml
+
+# 3) deploy datasets + members
 ansible-playbook -i inventories/hosts.yml playbooks/library_deploy.yml
 
-# 3) DB2 schema and test data
+# 4) DB2 schema and test data
 ansible-playbook -i inventories/hosts.yml playbooks/db2_schema.yml
 ansible-playbook -i inventories/hosts.yml playbooks/db2_data.yml
 
-# 4) compile/link/bind
+# 5) compile/link/bind
 ansible-playbook -i inventories/hosts.yml playbooks/compile_host.yml
 
-# 5) optional runtime smoke
+# 6) optional runtime smoke
 ansible-playbook -i inventories/hosts.yml playbooks/run_host.yml
 
-# 6) collect spool/evidence artifacts (run even if previous step failed)
+# 7) collect spool/evidence artifacts (run even if previous step failed)
 ansible-playbook -i inventories/hosts.yml playbooks/host_collect_artifacts.yml \
   -e artifact_id="$(date +%Y%m%dT%H%M%S)"
+
+# or explicit full chain in one command:
+ansible-playbook -i inventories/hosts.yml playbooks/smoke-full.yml
 ```
 
 ## GitHub Actions Path (F02-A Contract)
@@ -86,11 +120,15 @@ Optional repository variable:
 
 Execution:
 1. `workflow_dispatch`:
-   - full path `library_deploy -> db2_schema -> db2_data -> compile_host`
+   - full path `ssh_precheck -> library_deploy -> db2_schema -> db2_data -> compile_host`
    - optional `run_host` via `run_runtime_smoke=true`.
 2. `push` (debug mode):
    - if push includes COBOL changes and no DB2 changes, CI runs
-     `library_deploy -> compile_host -> run_host` (without DB2 steps).
+     `ssh_precheck -> library_deploy -> compile_host -> run_host` (without DB2 steps).
+
+Local smoke policy (F02-C):
+- `smoke.yml` = `ssh_precheck + deploy + db2 + compile` (default path, without runtime run).
+- `smoke-full.yml` = explicit full path with runtime run and artifact collection.
 
 How to run `workflow_dispatch` (GitHub UI):
 1. Open repository on GitHub.
@@ -109,6 +147,7 @@ Goal: ensure playbooks are structurally valid before host execution.
 Command:
 ```bash
 cd host-library-infra/ansible
+ansible-playbook -i inventories/hosts.yml playbooks/ssh_precheck.yml --syntax-check
 ansible-playbook -i inventories/hosts.yml playbooks/library_deploy.yml --syntax-check
 ansible-playbook -i inventories/hosts.yml playbooks/smoke.yml --syntax-check
 ```
@@ -119,7 +158,24 @@ Expected:
 Evidence:
 - terminal output with `playbook: ...` lines.
 
-### F02-RUN-002 — Deploy stage
+### F02-RUN-002 — SSH precheck
+Goal: verify minimal host SSH handshake before pipeline stages.
+
+Command:
+```bash
+cd host-library-infra/ansible
+ansible-playbook -i inventories/hosts.yml playbooks/ssh_precheck.yml
+```
+
+Expected:
+- `SSH_OK` is printed,
+- `whoami` and `pwd` are returned,
+- RC is `0`.
+
+Evidence:
+- playbook output for `ssh_precheck.yml`.
+
+### F02-RUN-003 — Deploy stage
 Goal: create datasets and upload COBOL/JCL/SQL members with IBM-1047 conversion.
 
 Command:
@@ -136,7 +192,7 @@ Expected:
 Evidence:
 - Ansible recap and task logs.
 
-### F02-RUN-003 — DB2 schema
+### F02-RUN-004 — DB2 schema
 Goal: apply schema job successfully.
 
 Command:
@@ -151,7 +207,7 @@ Expected:
 Evidence:
 - job id + RC from playbook output.
 
-### F02-RUN-004 — DB2 test data
+### F02-RUN-005 — DB2 test data
 Goal: load test data successfully.
 
 Command:
@@ -166,7 +222,7 @@ Expected:
 Evidence:
 - job id + RC from playbook output.
 
-### F02-RUN-005 — Compile/link/bind
+### F02-RUN-006 — Compile/link/bind
 Goal: build host load module `LIBMQTST` from canonical compile job.
 
 Command:
@@ -181,7 +237,7 @@ Expected:
 Evidence:
 - job ids, RCs, Ansible output.
 
-### F02-RUN-006 — Runtime smoke (optional)
+### F02-RUN-007 — Runtime smoke (optional)
 Goal: run host batch runtime check.
 
 Command:
@@ -196,7 +252,7 @@ Expected:
 Evidence:
 - run job id + RC, spool summary.
 
-### F02-RUN-007 — Artifact collection (always)
+### F02-RUN-008 — Artifact collection (always)
 Goal: persist spool/RC evidence for tracked jobs into deterministic local files.
 
 Command:

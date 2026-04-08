@@ -40,10 +40,27 @@ Repository variables:
 - ECR_REPO_COMMAND (required)
 - ECR_REPO_QUERY (required)
 - ENABLE_LATEST_TAG (optional, default: false)
+- ECS_PIPELINE_ENABLED (optional, default: false)
+- ECS_RUN_ON_PUSH_MAIN (optional, default: false)
 
 Repository secrets:
 
 - AWS_ROLE_TO_ASSUME (required, IAM role ARN trusted by GitHub OIDC)
+
+## ECS Pipeline Switch Catalog
+
+Single source of truth for pipeline switches:
+- GitHub Actions repository variables (and `workflow_dispatch` inputs).
+
+| Parameter | Typical values | Runtime effect |
+| --- | --- | --- |
+| `ECS_PIPELINE_ENABLED` | `true` / `false` | Global gate for `.github/workflows/deploy.yml`. If `false`, ECS steps are skipped. |
+| `ECS_RUN_ON_PUSH_MAIN` | `true` / `false` | Enables automatic build+deploy on `push` to `main` when global gate is enabled. |
+| `run_build` (`workflow_dispatch` input) | `true` / `false` | Runs Maven package + Docker build/push path. |
+| `run_deploy` (`workflow_dispatch` input) | `true` / `false` | Runs ECS task definition render + ECS deploy (implies build/push path). |
+
+Current operational default:
+- `ECS_PIPELINE_ENABLED=false` (ECS not configured yet).
 
 ## Docker build notes (CI/CD)
 
@@ -98,8 +115,11 @@ Common mistakes: setting `ENABLE_LATEST_TAG` to `True` or `TRUE` (must be `true`
 
 Validation quick check (GitHub Actions logs):
 1) Go to **Actions** → **Deploy** workflow → latest run.
-Expected result: the `Validate config` step is green.
-If this fails: the logs show which variable/secret is missing.
+Expected result:
+- if pipeline switches are disabled: `ECS pipeline no-op` step appears,
+- if enabled and started with run flags: `Validate build config` and (for deploy)
+  `Validate deploy config` steps are green.
+If this fails: logs show missing variable/secret or gate reason.
 
 ### Pre-flight: Validate ECS task definitions templates
 
@@ -200,7 +220,9 @@ Common errors and how to interpret them:
 1) Open GitHub → **Actions** → **Deploy** workflow.
 Expected result: you see the Deploy workflow page.
 
-2) Click **Run workflow** and choose the branch.
+2) Click **Run workflow**, choose the branch and set inputs:
+- `run_build=true` for build/push dry path,
+- `run_deploy=true` for full deploy path.
 Expected result: a new workflow run appears at the top of the list.
 
 3) Open the run and expand steps in order:
@@ -208,10 +230,12 @@ Expected result: each step shows green checkmarks.
 If this fails: use the step logs to locate the failing stage.
 
 4) Confirm these steps succeeded:
-- `Validate config`
+- `Resolve ECS pipeline switches`
+- `Validate build config`
 - `Build artifacts (skip tests)`
 - `Build and push loan-command-service image`
 - `Build and push loan-query-service image`
+- `Validate deploy config` (only for deploy mode)
 - `Render task definition (loan-command-service)`
 - `Render task definition (loan-query-service)`
 - `Deploy loan-command-service`

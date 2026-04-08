@@ -39,6 +39,16 @@ Out of scope:
 3. Required environment/profile variables are set.
 4. Target environment is reachable.
 
+## Unified Pipeline Parameter Catalog (If Applicable)
+
+If this flow uses centralized runtime parameters (for example `pipeline.*` in
+Ansible vars), add a single table here as the source of operational truth.
+
+| Parameter | Typical values | What changes / runtime effect |
+| --- | --- | --- |
+| `<param.path>` | `<values>` | `<impact>` |
+| `<param.path>` | `<values>` | `<impact>` |
+
 ## Canonical Command Path
 
 Run from repo root unless stated otherwise.
@@ -116,3 +126,4 @@ Update this runbook in the same PR/commit when changing:
 3. required env/secrets,
 4. acceptance criteria,
 5. evidence locations.
+6. centralized pipeline parameters (update the parameter catalog table).

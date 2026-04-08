@@ -106,6 +106,12 @@ For `todo.md`, each execution block MUST include:
 5. No legacy naming for new files:
 - do not create ad-hoc names like `Flow_`, `_v2`, mixed-case random patterns.
 
+6. Pipeline parameter contract must stay explicit:
+- if a flow runbook uses a centralized pipeline config (for example `pipeline.*`
+  in Ansible vars), the runbook MUST contain a "Unified Pipeline Parameter
+  Catalog" table.
+- any parameter change MUST update that table in the same PR/commit.
+
 ## 6) Minimal Creation Checklist
 
 Before creating/updating flow docs:

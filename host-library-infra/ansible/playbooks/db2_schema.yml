@@ -5,7 +5,8 @@
 
   vars:
     jcl_pds: "{{ hlq }}.JCL"
-    max_rc: 0
+    max_rc: "{{ pipeline.max_rc.schema | default(0) }}"
+    wait_time_s: "{{ pipeline.wait_time_s.schema | default(300) }}"
 
   environment: "{{ environment_vars }}"
 
@@ -17,10 +18,18 @@
       zos_job_submit:
         src: "{{ jcl_pds }}(LIBSCHEM)"
         location: data_set
-        wait_time_s: 300
+        wait_time_s: "{{ wait_time_s }}"
         return_output: true
       register: schema_job
-      failed_when: schema_job.jobs[0].ret_code.code|int > max_rc
 
-    - debug:
-        msg: "Schema RC={{ schema_job.jobs[0].ret_code.msg }}"
+    - name: Show schema RC
+      debug:
+        msg: "Schema RC={{ schema_job.jobs[0].ret_code.msg }} (max_rc={{ max_rc }})"
+
+    - name: Fail if schema RC exceeds threshold
+      ansible.builtin.fail:
+        msg: >-
+          DB2 schema job failed RC policy:
+          RC={{ schema_job.jobs[0].ret_code.msg }},
+          threshold={{ max_rc }}.
+      when: schema_job.jobs[0].ret_code.code|int > max_rc|int

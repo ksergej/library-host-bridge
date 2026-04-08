@@ -26,6 +26,36 @@ environment_vars:
   LANG: "C"
   LC_ALL: "C"
 
+pipeline:
+  # F02-C policy:
+  # - ssh_precheck is the first stage in smoke chains and CI execution paths.
+  # - smoke.yml: deploy -> db2_schema -> db2_data -> compile (no run)
+  # - smoke-full.yml: smoke.yml + run_host (+ optional artifact collection)
+  run_runtime_ssh_precheck: true
+  run_runtime_smoke_default: false
+  collect_artifacts_default: true
+
+  # F02-D policy:
+  # Centralized RC thresholds and wait times for host jobs.
+  max_rc:
+    schema: 0
+    data: 0
+    compile: 8
+    run: 0
+
+  wait_time_s:
+    schema: 300
+    data: 300
+    compile: 300
+    run: 300
+
+  artifacts:
+    tracked_jobs:
+      - name: "LIBSCHEM"
+      - name: "LIBDATA"
+      - name: "CBLMQDB2"
+      - name: "LIBMQTST"
+
 db2:
   subsystem: "DBDG"              # placeholder subsystem (e.g. DBC1/DSN1)
   plan: "{{ hlq }}"                # placeholder plan if bind/run uses it

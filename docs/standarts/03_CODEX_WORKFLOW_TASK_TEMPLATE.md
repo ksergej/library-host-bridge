@@ -78,3 +78,5 @@ Acceptance:
   `docs/flows/flow-XX/todo/todo.md`.
 - Runbooks are operational docs and SHOULD follow
   `docs/standarts/template-runbook-flow.md`.
+- If flow runtime is parameterized (for example `pipeline.*`), runbook MUST
+  include and maintain a pipeline parameter catalog table.

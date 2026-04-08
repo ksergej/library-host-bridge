@@ -5,7 +5,8 @@
 
   vars:
     jcl_pds: "{{ hlq }}.JCL"
-    max_rc: 0
+    max_rc: "{{ pipeline.max_rc.data | default(0) }}"
+    wait_time_s: "{{ pipeline.wait_time_s.data | default(300) }}"
 
   environment: "{{ environment_vars }}"
 
@@ -17,10 +18,18 @@
       zos_job_submit:
         src: "{{ jcl_pds }}(LIBDATA)"
         location: data_set
-        wait_time_s: 300
+        wait_time_s: "{{ wait_time_s }}"
         return_output: true
       register: data_job
-      failed_when: data_job.jobs[0].ret_code.code|int > max_rc
 
-    - debug:
-        msg: "Data RC={{ data_job.jobs[0].ret_code.msg }}"
+    - name: Show data RC
+      debug:
+        msg: "Data RC={{ data_job.jobs[0].ret_code.msg }} (max_rc={{ max_rc }})"
+
+    - name: Fail if data RC exceeds threshold
+      ansible.builtin.fail:
+        msg: >-
+          DB2 data job failed RC policy:
+          RC={{ data_job.jobs[0].ret_code.msg }},
+          threshold={{ max_rc }}.
+      when: data_job.jobs[0].ret_code.code|int > max_rc|int
