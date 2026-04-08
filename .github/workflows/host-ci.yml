@@ -39,6 +39,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - name: Validate required host config
         run: |
@@ -116,6 +118,33 @@ jobs:
           hlq: "${ZOS_HLQ}"
           YAML
 
+      - name: Detect push scope (cobol debug path)
+        id: scope
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          before="${{ github.event.before }}"
+          after="${{ github.sha }}"
+
+          files="$(git diff --name-only "${before}" "${after}" || true)"
+          has_cobol=false
+          has_db2=false
+
+          while IFS= read -r file; do
+            [[ -z "${file}" ]] && continue
+            [[ "${file}" == host-library-infra/cobol/* ]] && has_cobol=true
+            [[ "${file}" == host-library-infra/db2/* ]] && has_db2=true
+          done <<< "${files}"
+
+          run_minimal=false
+          if [[ "${has_cobol}" == "true" && "${has_db2}" == "false" ]]; then
+            run_minimal=true
+          fi
+
+          echo "has_cobol=${has_cobol}" >> "${GITHUB_OUTPUT}"
+          echo "has_db2=${has_db2}" >> "${GITHUB_OUTPUT}"
+          echo "run_minimal=${run_minimal}" >> "${GITHUB_OUTPUT}"
+
       - name: Host syntax checks (fail-fast)
         run: |
           set -euo pipefail
@@ -124,6 +153,8 @@ jobs:
             playbooks/library_deploy.yml --syntax-check -e @.ci.extra-vars.yml
           ansible-playbook -i inventories/hosts.ci.yml \
             playbooks/smoke.yml --syntax-check -e @.ci.extra-vars.yml
+          ansible-playbook -i inventories/hosts.ci.yml \
+            playbooks/host_collect_artifacts.yml --syntax-check -e @.ci.extra-vars.yml
 
       - name: Run host pipeline (deploy -> db2 -> compile)
         if: github.event_name == 'workflow_dispatch'
@@ -139,6 +170,18 @@ jobs:
           ansible-playbook -i inventories/hosts.ci.yml \
             playbooks/compile_host.yml -e @.ci.extra-vars.yml
 
+      - name: Run minimal debug pipeline on push (deploy -> compile -> run, no DB2)
+        if: github.event_name == 'push' && steps.scope.outputs.run_minimal == 'true'
+        run: |
+          set -euo pipefail
+          cd host-library-infra/ansible
+          ansible-playbook -i inventories/hosts.ci.yml \
+            playbooks/library_deploy.yml -e @.ci.extra-vars.yml
+          ansible-playbook -i inventories/hosts.ci.yml \
+            playbooks/compile_host.yml -e @.ci.extra-vars.yml
+          ansible-playbook -i inventories/hosts.ci.yml \
+            playbooks/run_host.yml -e @.ci.extra-vars.yml
+
       - name: Optional runtime smoke (run_host)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_runtime_smoke == 'true'
         run: |
@@ -146,3 +189,30 @@ jobs:
           cd host-library-infra/ansible
           ansible-playbook -i inventories/hosts.ci.yml \
             playbooks/run_host.yml -e @.ci.extra-vars.yml
+
+      - name: Collect host artifacts (always)
+        if: >-
+          always() && (
+            github.event_name == 'workflow_dispatch' ||
+            (github.event_name == 'push' && steps.scope.outputs.run_minimal == 'true')
+          )
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          cd host-library-infra/ansible
+          ansible-playbook -i inventories/hosts.ci.yml \
+            playbooks/host_collect_artifacts.yml \
+            -e @.ci.extra-vars.yml \
+            -e artifact_id="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+
+      - name: Upload host evidence artifact
+        if: >-
+          always() && (
+            github.event_name == 'workflow_dispatch' ||
+            (github.event_name == 'push' && steps.scope.outputs.run_minimal == 'true')
+          )
+        uses: actions/upload-artifact@v4
+        with:
+          name: host-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: host-library-infra/ansible/artifacts/${{ github.run_id }}-${{ github.run_attempt }}/
+          if-no-files-found: warn

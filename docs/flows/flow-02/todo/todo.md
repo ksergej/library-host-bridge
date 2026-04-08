@@ -29,9 +29,8 @@ Required context:
 3. No secrets are committed in repo.
 4. Source uploads to z/OS use explicit `IBM-1047` conversion.
 5. SQL members `SCHEMA` / `TESTDATA` stay compatible with FB/80 dataset policy.
-6. Compile tracks remain deterministic for both host programs:
+6. Compile track is deterministic for minimal scope:
    - `LIBMQTST` via `CBLMQDB2`
-   - `LIBMQCIC` via `CBLMQCIC`
 
 ## 2. Mandatory Gate For Every Block
 
@@ -71,13 +70,22 @@ Implemented baseline:
 - `host-library-infra/ansible/playbooks/run_host.yml`
 - `host-library-infra/ansible/playbooks/smoke.yml`
 - `host-library-infra/ansible/templates/jcl/CBLMQDB2.jcl.j2`
-- `host-library-infra/ansible/templates/jcl/CBLMQCIC.jcl.j2`
 - `host-library-infra/ansible/templates/jcl/LIBSCHEMA.jcl.j2`
 - `host-library-infra/ansible/templates/jcl/LIBDATA.jcl.j2`
 - `host-library-infra/ansible/templates/jcl/LIBMQTST.jcl.j2`
 
+Locked first test scope:
+- `LIBSCHEM`
+- `LIBDATA`
+- `LIBMQTST.cbl`
+- compile: `CBLMQDB2.jcl.j2`
+- run: `LIBMQTST.jcl.j2`
+
+Note:
+- `LIBMQCIC`/`CBLMQCIC` assets may still exist in repo but are outside this
+  first minimal smoke scope.
+
 Known current gaps:
-- No explicit artifact collection playbook for spool/listings/load evidence.
 - `run_host.yml` currently not imported in `smoke.yml` by default.
 
 ## 4. Atomic Commit Blocks (FLOW-02)
@@ -112,6 +120,9 @@ Introduce a dedicated host CI workflow that runs Ansible host pipeline steps.
   `ZOS_SSH_PRIVATE_KEY`, `ZOS_HLQ`).
 - Connectivity precheck over SSH added before Ansible execution.
 - Host Ansible syntax checks and deterministic playbook order are defined.
+- Push debug mode added:
+  - when push contains COBOL changes and no DB2 changes, CI runs
+    `library_deploy -> compile_host -> run_host` (without `db2_schema/db2_data`).
 
 ### Reject conditions
 - workflow depends on hardcoded credentials,
@@ -121,6 +132,8 @@ Introduce a dedicated host CI workflow that runs Ansible host pipeline steps.
 ---
 
 ## Block F02-B — Artifact Collection Layer (Spool + Evidence)
+
+Status: done (2026-04-08)
 
 ### Goal
 Collect and persist host run evidence for compile/schema/data/run steps.
@@ -139,6 +152,18 @@ Collect and persist host run evidence for compile/schema/data/run steps.
 - artifacts include at least job RC and spool evidence,
 - paths are documented and stable,
 - collection can run independently.
+
+### Delivered
+- Added `host-library-infra/ansible/playbooks/host_collect_artifacts.yml`.
+- Collection output path standardized:
+  `host-library-infra/ansible/artifacts/<artifact_id>/<inventory_host>/`.
+- Implemented evidence files:
+  - `summary.json`,
+  - `jobs/<JOBNAME>-<JOBID>.json`,
+  - `jobs/<JOBNAME>-NOT_FOUND.txt` (explicit missing markers).
+- Added CI integration in `.github/workflows/host-ci.yml`:
+  - artifact collection step with `if: always()`,
+  - upload via `actions/upload-artifact`.
 
 ### Reject conditions
 - artifacts only available on success,

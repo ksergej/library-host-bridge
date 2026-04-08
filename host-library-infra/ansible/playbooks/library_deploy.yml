@@ -17,15 +17,10 @@
     host_programs:
       - member: "LIBMQTST"
         src: "LIBMQTST.cbl"
-      - member: "LIBMQCIC"
-        src: "LIBMQCIC.cbl"
     compile_jobs:
       - member: "CBLMQDB2"
         template: "CBLMQDB2.jcl.j2"
         host_program_member: "LIBMQTST"
-      - member: "CBLMQCIC"
-        template: "CBLMQCIC.jcl.j2"
-        host_program_member: "LIBMQCIC"
 
   environment: "{{ environment_vars }}"
 

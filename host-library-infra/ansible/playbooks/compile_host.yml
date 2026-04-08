@@ -7,7 +7,6 @@
     jcl_pds: "{{ hlq }}.JCL"
     compile_members:
       - "CBLMQDB2"
-      - "CBLMQCIC"
     max_rc: 8
 
   environment: "{{ environment_vars }}"

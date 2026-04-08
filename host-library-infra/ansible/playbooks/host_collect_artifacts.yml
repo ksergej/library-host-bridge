@@ -1,0 +1,125 @@
+---
+- name: Collect host job artifacts (spool + evidence)
+  hosts: zos_xplore
+  gather_facts: false
+
+  vars:
+    artifact_id_default: "{{ lookup('pipe', 'date +%Y%m%dT%H%M%S') }}"
+    artifact_id_resolved: "{{ artifact_id | default(artifact_id_default) }}"
+    artifact_base_dir: "{{ playbook_dir }}/../artifacts"
+    artifact_host_dir: "{{ artifact_base_dir }}/{{ artifact_id_resolved }}/{{ inventory_hostname }}"
+    artifact_jobs_dir: "{{ artifact_host_dir }}/jobs"
+    artifact_owner: "{{ ansible_user | default('') }}"
+    tracked_jobs:
+      - name: "LIBSCHEM"
+      - name: "LIBDATA"
+      - name: "CBLMQDB2"
+      - name: "LIBMQTST"
+
+  environment: "{{ environment_vars }}"
+
+  collections:
+    - ibm.ibm_zos_core
+
+  tasks:
+    - name: Ensure local artifact directories exist
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ artifact_host_dir }}"
+        - "{{ artifact_jobs_dir }}"
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+
+    - name: Query latest tracked jobs
+      zos_job_query:
+        job_name: "{{ item.name }}"
+        owner: "{{ artifact_owner if (artifact_owner | length) > 0 else omit }}"
+      register: queried_jobs
+      failed_when: false
+      changed_when: false
+      loop: "{{ tracked_jobs }}"
+
+    - name: Build job evidence index
+      ansible.builtin.set_fact:
+        job_evidence_index: >-
+          {{
+            (job_evidence_index | default([]))
+            + [ {
+                  'name': item.item.name,
+                  'found': ((item.jobs | default([]) | length) > 0),
+                  'job_id': (((item.jobs | default([]) | first).job_id)
+                             if ((item.jobs | default([]) | length) > 0)
+                             else ''),
+                  'owner': (((item.jobs | default([]) | first).owner)
+                            if ((item.jobs | default([]) | length) > 0)
+                            else ''),
+                  'ret_code': (
+                    ((item.jobs | default([]) | first).ret_code.msg)
+                    if (
+                      (item.jobs | default([]) | length) > 0
+                      and ((item.jobs | default([]) | first).ret_code is defined)
+                      and ((item.jobs | default([]) | first).ret_code.msg is defined)
+                    )
+                    else 'N/A'
+                  )
+                } ]
+          }}
+      loop: "{{ queried_jobs.results | default([]) }}"
+
+    - name: Collect spool/output for found jobs
+      zos_job_output:
+        job_id: "{{ item.job_id }}"
+        owner: "{{ item.owner }}"
+      register: collected_outputs
+      failed_when: false
+      changed_when: false
+      loop: "{{ job_evidence_index | selectattr('found', 'equalto', true) | list }}"
+
+    - name: Write artifact summary json
+      ansible.builtin.copy:
+        dest: "{{ artifact_host_dir }}/summary.json"
+        mode: "0644"
+        content: |
+          {{
+            {
+              'artifact_id': artifact_id_resolved,
+              'host': inventory_hostname,
+              'tracked_jobs': tracked_jobs,
+              'job_evidence_index': (job_evidence_index | default([]))
+            } | to_nice_json
+          }}
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+
+    - name: Write collected job spool/output json files
+      ansible.builtin.copy:
+        dest: "{{ artifact_jobs_dir }}/{{ item.item.name }}-{{ item.item.job_id }}.json"
+        mode: "0644"
+        content: "{{ item | to_nice_json }}"
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+      loop: "{{ collected_outputs.results | default([]) }}"
+
+    - name: Write missing-job markers
+      ansible.builtin.copy:
+        dest: "{{ artifact_jobs_dir }}/{{ item.name }}-NOT_FOUND.txt"
+        mode: "0644"
+        content: |
+          No job found for {{ item.name }} and owner {{ artifact_owner }}.
+          Artifact id: {{ artifact_id_resolved }}
+      delegate_to: localhost
+      vars:
+        ansible_connection: local
+      loop: "{{ job_evidence_index | selectattr('found', 'equalto', false) | list }}"
+
+    - name: Show artifact location
+      ansible.builtin.debug:
+        msg:
+          - "Artifact id={{ artifact_id_resolved }}"
+          - "Artifact directory={{ artifact_host_dir }}"

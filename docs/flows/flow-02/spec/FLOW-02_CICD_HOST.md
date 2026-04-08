@@ -13,6 +13,12 @@ This flow defines the canonical host delivery pipeline currently implemented in 
 3. Compile/link/bind host programs through JCL.
 4. Optionally run host batch program for runtime smoke.
 
+Locked minimal test scope (phase-1):
+- COBOL source: `LIBMQTST.cbl`
+- DB2 jobs: `LIBSCHEM`, `LIBDATA`
+- Compile job/template: `CBLMQDB2` / `CBLMQDB2.jcl.j2`
+- Run job/template: `LIBMQTST` / `LIBMQTST.jcl.j2`
+
 The flow is implemented with Ansible (`ibm.ibm_zos_core`) and JCL templates in
 `host-library-infra/ansible`.
 
@@ -22,14 +28,14 @@ The flow is implemented with Ansible (`ibm.ibm_zos_core`) and JCL templates in
 host-library-infra/
   cobol/
     LIBMQTST.cbl
-    LIBMQCIC.cbl
+    LIBMQCIC.cbl              # present in repo, out of minimal scope
     LIBLOAN.cpy
   db2/
     schema.sql
     testdata.sql
   jcl/
     CBLMQDB2.jcl
-    CBLMQCIC.jcl
+    CBLMQCIC.jcl              # present in repo, out of minimal scope
     LIBMQTST.jcl
     LIBMQTSTC.jcl
     README_XPLORE_JOBS.md
@@ -41,7 +47,7 @@ host-library-infra/
         zos_xplore.yml
     templates/jcl/
       CBLMQDB2.jcl.j2
-      CBLMQCIC.jcl.j2
+      CBLMQCIC.jcl.j2         # present in repo, out of minimal scope
       LIBSCHEMA.jcl.j2
       LIBDATA.jcl.j2
       LIBMQTST.jcl.j2
@@ -53,6 +59,7 @@ host-library-infra/
       db2_data.yml
       compile_host.yml
       run_host.yml
+      host_collect_artifacts.yml
       smoke.yml
       library_tests.yml
 ```
@@ -63,6 +70,11 @@ Notes:
   - `.github/workflows/deploy.yml` (ECS deployment)
   - `.github/workflows/host-ci.yml` (host pipeline contract for FLOW-02)
 - Host inventory/group vars are under `host-library-infra/ansible/inventories`.
+- `host-ci.yml` has two execution modes:
+  - `workflow_dispatch`: full path `deploy -> db2_schema -> db2_data -> compile`
+    and optional `run_host` by input flag.
+  - `push` with COBOL-only changes (without DB2 changes): debug path
+    `deploy -> compile -> run` (DB2 steps skipped).
 
 ## 3) Inputs and configuration
 
@@ -95,7 +107,7 @@ What it does:
   - `{{ db2.dbrmlib }}` (PDS)
   - `{{ hlq }}.SQL` (PDS FB/80)
 - Uploads COBOL source/copybook (`IBM-1047` conversion).
-- Renders compile jobs locally (`CBLMQDB2`, `CBLMQCIC`) and uploads members.
+- Renders compile job locally (`CBLMQDB2`) and uploads member.
 - Uploads run/schema/data JCL template members.
 - Uploads SQL members:
   - `{{ hlq }}.SQL(SCHEMA)`
@@ -115,13 +127,12 @@ Playbook: `host-library-infra/ansible/playbooks/db2_data.yml`
 - Submits `{{ hlq }}.JCL(LIBDATA)`.
 - Requires `RC == 0`.
 
-### Step D — compile/link/bind host programs
+### Step D — compile/link/bind host program
 
 Playbook: `host-library-infra/ansible/playbooks/compile_host.yml`
 
-- Submits both compile members:
+- Submits compile member:
   - `{{ hlq }}.JCL(CBLMQDB2)` for `LIBMQTST`
-  - `{{ hlq }}.JCL(CBLMQCIC)` for `LIBMQCIC`
 - Current acceptance in playbook: `max_rc = 8`.
 
 ### Step E — optional run smoke
@@ -135,6 +146,19 @@ Important:
 - `smoke.yml` currently imports deploy + db2 + compile only.
 - `run_host.yml` is currently commented out in `smoke.yml` and must be run
   separately when runtime smoke is needed.
+
+### Step F — artifact collection (spool/evidence)
+
+Playbook: `host-library-infra/ansible/playbooks/host_collect_artifacts.yml`
+
+- Collects tracked job evidence (`LIBSCHEM`, `LIBDATA`, `CBLMQDB2`,
+  `LIBMQTST`) into deterministic local path:
+  - `host-library-infra/ansible/artifacts/<artifact_id>/<inventory_host>/`
+- Writes:
+  - `summary.json` (job index and collection metadata),
+  - per-job spool/output json under `jobs/`,
+  - `*-NOT_FOUND.txt` markers for missing jobs.
+- Runnable independently and intended to be executed even after failed smoke.
 
 ## 5) Standard commands
 
@@ -155,6 +179,9 @@ ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
 
 ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
   host-library-infra/ansible/playbooks/run_host.yml
+
+ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
+  host-library-infra/ansible/playbooks/host_collect_artifacts.yml
 ```
 
 Or combined (without runtime step at the moment):
@@ -176,10 +203,8 @@ ansible-playbook -i inventories/hosts.yml playbooks/smoke.yml
 
 These items are not fully implemented yet:
 
-1. No centralized artifact harvesting (spool/listings/load evidence) in repo as a
-   dedicated `host_collect_artifacts` playbook.
-2. Runtime smoke is not part of current `smoke.yml` import chain by default.
-3. Optional MQSC health checks exist as JCL assets, but are not wired into the
+1. Runtime smoke is not part of current `smoke.yml` import chain by default.
+2. Optional MQSC health checks exist as JCL assets, but are not wired into the
    Ansible smoke sequence.
 
 ## 8) Correlation rule (must not change)

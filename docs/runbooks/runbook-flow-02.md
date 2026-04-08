@@ -9,8 +9,15 @@ Scope: host CI/CD execution for z/OS (Ansible + JCL + DB2 + MQ) in FLOW-02.
 This runbook defines the canonical operator path for FLOW-02:
 1. deploy host artifacts,
 2. apply DB2 schema/data,
-3. compile/link/bind host programs,
+3. compile/link/bind host program,
 4. run optional runtime smoke.
+
+Locked first test scope:
+- `LIBSCHEM`
+- `LIBDATA`
+- source `LIBMQTST.cbl`
+- compile via `CBLMQDB2.jcl.j2`
+- run via `LIBMQTST.jcl.j2`
 
 MQ correlation rule is invariant and MUST stay unchanged:
 - host MQMD: `CorrelId = request MsgId`, then clear `MsgId`,
@@ -57,6 +64,10 @@ ansible-playbook -i inventories/hosts.yml playbooks/compile_host.yml
 
 # 5) optional runtime smoke
 ansible-playbook -i inventories/hosts.yml playbooks/run_host.yml
+
+# 6) collect spool/evidence artifacts (run even if previous step failed)
+ansible-playbook -i inventories/hosts.yml playbooks/host_collect_artifacts.yml \
+  -e artifact_id="$(date +%Y%m%dT%H%M%S)"
 ```
 
 ## GitHub Actions Path (F02-A Contract)
@@ -74,8 +85,21 @@ Optional repository variable:
 - `ZOS_SSH_PORT` (default `22`)
 
 Execution:
-1. Run `Host CI` via `workflow_dispatch`.
-2. Optionally set `run_runtime_smoke=true` to run `playbooks/run_host.yml`.
+1. `workflow_dispatch`:
+   - full path `library_deploy -> db2_schema -> db2_data -> compile_host`
+   - optional `run_host` via `run_runtime_smoke=true`.
+2. `push` (debug mode):
+   - if push includes COBOL changes and no DB2 changes, CI runs
+     `library_deploy -> compile_host -> run_host` (without DB2 steps).
+
+How to run `workflow_dispatch` (GitHub UI):
+1. Open repository on GitHub.
+2. Go to `Actions`.
+3. Select workflow `Host CI`.
+4. Click `Run workflow`.
+5. Select target branch.
+6. Optionally set `run_runtime_smoke=true` (to execute `playbooks/run_host.yml`).
+7. Click `Run workflow` to start.
 
 ## Stage-by-Stage Verification
 
@@ -143,7 +167,7 @@ Evidence:
 - job id + RC from playbook output.
 
 ### F02-RUN-005 — Compile/link/bind
-Goal: build host load modules (`LIBMQTST`, `LIBMQCIC`) from canonical compile jobs.
+Goal: build host load module `LIBMQTST` from canonical compile job.
 
 Command:
 ```bash
@@ -152,7 +176,7 @@ ansible-playbook -i inventories/hosts.yml playbooks/compile_host.yml
 ```
 
 Expected:
-- compile jobs (`CBLMQDB2`, `CBLMQCIC`) submitted and pass RC policy.
+- compile job (`CBLMQDB2`) submitted and passes RC policy.
 
 Evidence:
 - job ids, RCs, Ansible output.
@@ -171,6 +195,25 @@ Expected:
 
 Evidence:
 - run job id + RC, spool summary.
+
+### F02-RUN-007 — Artifact collection (always)
+Goal: persist spool/RC evidence for tracked jobs into deterministic local files.
+
+Command:
+```bash
+cd host-library-infra/ansible
+ansible-playbook -i inventories/hosts.yml playbooks/host_collect_artifacts.yml \
+  -e artifact_id="$(date +%Y%m%dT%H%M%S)"
+```
+
+Expected:
+- artifact directory created,
+- `summary.json` created,
+- per-job json files or explicit `NOT_FOUND` markers are present.
+
+Evidence:
+- `host-library-infra/ansible/artifacts/<artifact_id>/<host>/summary.json`,
+- `host-library-infra/ansible/artifacts/<artifact_id>/<host>/jobs/*`.
 
 ## Troubleshooting Matrix
 

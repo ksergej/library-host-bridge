@@ -4,3 +4,5 @@
 - import_playbook: db2_data.yml
 - import_playbook: compile_host.yml
 #- import_playbook: run_host.yml
+# Artifact collection is intentionally separate:
+# run `playbooks/host_collect_artifacts.yml` explicitly (including after failures).

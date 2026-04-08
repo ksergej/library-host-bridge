@@ -9,9 +9,8 @@ This runbook targets developers running real host smoke/integration tests agains
 3) MQ queues exist and match application config (request/reply names).
 4) MQ correlation rule reminder: CorrelId = MsgId in MQMD (COBOL copies MQMD-MSGID to MQMD-CORRELID, clears MQMD-MSGID; Java reads JMSMessageID and selects by JMSCorrelationID).
 5) No secrets in git. Use local overrides, environment variables, and `*.example.yml` files.
-6) Host deploy pipeline now provisions/compiles two programs in parallel tracks:
+6) Host deploy pipeline minimal scope compiles:
    - `LIBMQTST` via `CBLMQDB2`
-   - `LIBMQCIC` via `CBLMQCIC`
 
 ## Host Access Configuration
 
@@ -55,6 +54,9 @@ Optional repository variable:
 Current strategy is intentionally simple:
 - use GitHub-hosted runner with SSH connectivity precheck,
 - fail fast on missing secrets or unreachable host.
+- CI execution modes:
+  - `workflow_dispatch`: full path (`deploy -> db2_schema -> db2_data -> compile_host`, optional `run_host`)
+  - `push` with COBOL-only changes (no DB2 changes): debug path (`deploy -> compile_host -> run_host`)
 
 If network/IP allowlist issues appear later, handle as a separate improvement
 block (self-hosted runner, dynamic IP ranges, or VPN/tunnel model).
@@ -86,6 +88,14 @@ Optional batch run (`LIBMQTST`):
 ```
 ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
   host-library-infra/ansible/playbooks/run_host.yml
+```
+
+Artifact collection (spool/evidence; can be run after failed stages):
+
+```
+ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
+  host-library-infra/ansible/playbooks/host_collect_artifacts.yml \
+  -e artifact_id="$(date +%Y%m%dT%H%M%S)"
 ```
 
 ## Variant 1 — Maven (terminal)

@@ -130,7 +130,7 @@ Host assets live under `host-library-infra/` (COBOL, JCL, DB2, Ansible).
 
 Current host programs:
 - `LIBMQTST` (batch baseline)
-- `LIBMQCIC` (parallel CICS-oriented program)
+- first smoke scope is locked to `LIBMQTST` path (`LIBSCHEM` -> `LIBDATA` -> `CBLMQDB2` -> `LIBMQTST`)
 
 Run Ansible smoke from repo root:
 
@@ -149,12 +149,23 @@ ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
   host-library-infra/ansible/playbooks/compile_host.yml
 ```
 
+Collect host spool/evidence artifacts:
+
+```
+ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
+  host-library-infra/ansible/playbooks/host_collect_artifacts.yml \
+  -e artifact_id="$(date +%Y%m%dT%H%M%S)"
+```
+
 Fill placeholders in `host-library-infra/ansible/inventories/group_vars/zos_xplore.yml` before running on IBM Z XPlore.
 
 Host CI workflow (FLOW-02):
 
 - Workflow file: `.github/workflows/host-ci.yml`
 - Trigger: `workflow_dispatch` (manual) and host-related `push`/`pull_request` path filters
+- CI modes:
+  - `workflow_dispatch`: full host path (`deploy -> db2 -> compile`, optional `run`)
+  - `push` (COBOL-only changes, no DB2 files): debug path (`deploy -> compile -> run`)
 - Required GitHub Secrets:
   - `ZOS_HOST`
   - `ZOS_SSH_USER`

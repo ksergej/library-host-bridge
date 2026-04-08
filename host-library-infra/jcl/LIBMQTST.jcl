@@ -1,21 +1,35 @@
-//LIBMQRUN JOB (ACCT),'RUN LIBMQTST',
+//LIBMQTST JOB (ACCT),'RUN LIBMQTST',
 //         CLASS=A,MSGCLASS=X,NOTIFY=&SYSUID
 //*-------------------------------------------------------------*
-//*  IBM Z Xplore placeholder job to run MQ+DB2 test LIBMQTST   *
-//*  Replace &HLQ, &COBLOAD, &MQLOAD, &DB2LOAD with real values:*
-//*    - &HLQ      : your HLQ (e.g. Z12345)                     *
-//*    - &COBLOAD  : COBOL loadlib with LIBMQTST (e.g. &HLQ..LIB.LOAD) *
-//*    - &MQLOAD   : IBM MQ loadlib (e.g. CSQ900.SCSQLOAD)      *
-//*    - &DB2LOAD  : DB2 SDSNLOAD for runtime (e.g. SDSN.SDSNLOAD) *
+//*  Run MQ+DB2 test LIBMQTST (XML -> copybook -> DB2)
+//*  Tokens replaced by Ansible:
+//*    HLQ, COBLOAD, MQLOAD, DB2LOAD,
+//*         SYSIN (QMGR/REQ/RPLY/WAIT_MS)
 //*-------------------------------------------------------------*
-//SET HLQ=Z12345
-//SET COBLOAD=&HLQ..LIB.LOAD
-//SET MQLOAD=CSQ900.SCSQLOAD
-//SET DB2LOAD=SDSN.SDSNLOAD
-//*
-//RUN     EXEC PGM=LIBMQTST,REGION=0M
+//VARS   SET HLQ=Z88011
+//       SET DB2LOAD=DSND10.SDSNLOAD
+//       SET COBLOAD=&HLQ..LOAD
+//       SET MQLOAD=CSQ920.SCSQLOAD
+//*-------------------------------------------------------------*
+//RUN     EXEC PGM=IKJEFT01
 //STEPLIB DD  DSN=&COBLOAD,DISP=SHR
 //        DD  DSN=&MQLOAD,DISP=SHR
 //        DD  DSN=&DB2LOAD,DISP=SHR
-//SYSOUT  DD  SYSOUT=*
+//REPORT   DD SYSOUT=*
+//SYSTSIN  DD *,SYMBOLS=CNVTSYS
+ DSN SYSTEM(DBDG)
+ RUN PROGRAM(LIBMQTST) PLAN(&SYSUID) LIB('&SYSUID..LOAD')
+ END
+//SYSIN    DD DUMMY
+//SYSUDUMP DD DUMMY
+//CEEDUMP  DD DUMMY
+//SYSTSPRT DD SYSOUT=*
+//SYSPRINT DD SYSOUT=*
+//SYSOUT  DD  SYSOUT=*,OUTLIM=15000
+//PARAMS  DD  *
+QMGR=CSQ9
+REQ=Z88011.MQZ3.QLOCAL
+RPLY=Z88011.MQZ3.REPLYTO.QLOCAL
+WAIT_MS=30000
+/*
 //*
