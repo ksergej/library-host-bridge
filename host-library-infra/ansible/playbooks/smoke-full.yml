@@ -1,4 +1,3 @@
 ---
 - import_playbook: smoke.yml
-- import_playbook: run_host.yml
 - import_playbook: host_collect_artifacts.yml

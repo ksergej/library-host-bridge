@@ -4,7 +4,11 @@
 - import_playbook: db2_schema.yml
 - import_playbook: db2_data.yml
 - import_playbook: compile_host.yml
+- import_playbook: run_host.yml
 # Default smoke policy (F02-C):
-# - no runtime run_host step by default
+# - db2_schema/db2_data stages are controlled by
+#   pipeline.run_runtime_skip_db2 / run_runtime_skip_db2 override
+# - run_host step is present but controlled by
+#   pipeline.run_runtime_smoke_default / run_runtime_smoke override
 # - no artifact collection by default
 # For full smoke use `playbooks/smoke-full.yml`.

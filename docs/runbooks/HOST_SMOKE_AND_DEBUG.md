@@ -58,8 +58,13 @@ Current strategy is intentionally simple:
 - use GitHub-hosted runner with SSH connectivity precheck,
 - fail fast on missing secrets or unreachable host.
 - CI execution modes:
-  - `workflow_dispatch`: full path (`ssh_precheck -> deploy -> db2_schema -> db2_data -> compile_host`, optional `run_host`)
+  - `workflow_dispatch`: full path (`ssh_precheck -> deploy -> db2_schema -> db2_data -> compile_host -> run_host`)
+    with runtime mode priority:
+    `run_runtime_smoke (auto|true|false)` input > `pipeline.run_runtime_smoke_default`.
+    DB2 mode priority:
+    `run_runtime_skip_db2 (auto|true|false)` input > `pipeline.run_runtime_skip_db2`.
   - `push` with COBOL-only changes (no DB2 changes): debug path (`ssh_precheck -> deploy -> compile_host -> run_host`)
+    where `run_host` follows `pipeline.run_runtime_smoke_default`.
 
 If network/IP allowlist issues appear later, handle as a separate improvement
 block (self-hosted runner, dynamic IP ranges, or VPN/tunnel model).

@@ -79,10 +79,14 @@ Notes:
 - Host inventory/group vars are under `host-library-infra/ansible/inventories`.
 - `host-ci.yml` has two execution modes:
   - `workflow_dispatch`: full path
-    `ssh_precheck -> deploy -> db2_schema -> db2_data -> compile`
-    and optional `run_host` by input flag.
+    `ssh_precheck -> deploy -> db2_schema -> db2_data -> compile -> run_host`
+    where runtime mode resolution is:
+    input `run_runtime_smoke` (`auto|true|false`) > `pipeline.run_runtime_smoke_default`.
+    DB2 mode resolution:
+    input `run_runtime_skip_db2` (`auto|true|false`) > `pipeline.run_runtime_skip_db2`.
   - `push` with COBOL-only changes (without DB2 changes): debug path
-    `ssh_precheck -> deploy -> compile -> run` (DB2 steps skipped).
+    `ssh_precheck -> deploy -> compile -> run` (DB2 steps skipped),
+    and `run_host` follows `pipeline.run_runtime_smoke_default`.
 
 ## 3) Inputs and configuration
 
@@ -101,6 +105,7 @@ Key variable groups currently used:
   `le.linklib`, `cics.loadlib`, `cics.copylib`.
 - Pipeline control catalog (`pipeline.*`):
   - `pipeline.run_runtime_ssh_precheck`
+  - `pipeline.run_runtime_skip_db2`
   - `pipeline.max_rc.{schema,data,compile,run}`
   - `pipeline.wait_time_s.{schema,data,compile,run}`
   - `pipeline.run_runtime_smoke_default`
@@ -141,14 +146,14 @@ What it does:
 
 Playbook: `host-library-infra/ansible/playbooks/db2_schema.yml`
 
-- Submits `{{ hlq }}.JCL(LIBSCHEM)`.
+- Submits `{{ hlq }}.JCL(LIBSCHEM)` only when effective DB2 skip flag is false.
 - Requires `RC == 0`.
 
 ### Step D — DB2 test data
 
 Playbook: `host-library-infra/ansible/playbooks/db2_data.yml`
 
-- Submits `{{ hlq }}.JCL(LIBDATA)`.
+- Submits `{{ hlq }}.JCL(LIBDATA)` only when effective DB2 skip flag is false.
 - Requires `RC == 0`.
 
 ### Step E — compile/link/bind host program
@@ -163,13 +168,16 @@ Playbook: `host-library-infra/ansible/playbooks/compile_host.yml`
 
 Playbook: `host-library-infra/ansible/playbooks/run_host.yml`
 
-- Submits `{{ hlq }}.JCL(LIBMQTST)`.
+- Submits `{{ hlq }}.JCL(LIBMQTST)` only when effective runtime flag is true.
 - Requires `RC == 0`.
+- Effective runtime flag resolution:
+  - explicit `run_runtime_smoke` (if provided and not `auto`) wins,
+  - otherwise `pipeline.run_runtime_smoke_default` is used.
 
 Important:
-- `smoke.yml` is default path: `deploy + db2 + compile` (no run).
+- `smoke.yml` includes `run_host`, but run is conditional by the effective flag.
 - `smoke-full.yml` is explicit full path:
-  `smoke.yml + run_host + host_collect_artifacts`.
+  `smoke.yml + host_collect_artifacts`.
 
 ### Step G — artifact collection (spool/evidence)
 
@@ -211,7 +219,7 @@ ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
   host-library-infra/ansible/playbooks/host_collect_artifacts.yml
 ```
 
-Or combined (without runtime step at the moment):
+Or combined with default runtime policy:
 
 ```bash
 cd host-library-infra/ansible
@@ -219,6 +227,14 @@ ansible-playbook -i inventories/hosts.yml playbooks/smoke.yml
 
 # explicit full smoke (includes run + artifact collection)
 ansible-playbook -i inventories/hosts.yml playbooks/smoke-full.yml
+
+# force runtime smoke regardless of default
+ansible-playbook -i inventories/hosts.yml playbooks/smoke-full.yml \
+  -e run_runtime_smoke=true
+
+# force DB2 stages even if default skip is true
+ansible-playbook -i inventories/hosts.yml playbooks/smoke-full.yml \
+  -e run_runtime_skip_db2=false
 ```
 
 ## 6) Determinism and validation rules

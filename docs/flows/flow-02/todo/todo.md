@@ -203,11 +203,18 @@ Define and implement stable policy for `run_host.yml` in smoke chain.
 - commands in docs match real playbook chain.
 
 ### Delivered
-- `smoke.yml` fixed as default policy: `deploy -> db2_schema -> db2_data -> compile`
-  (no runtime run by default).
-- Added `smoke-full.yml` as explicit full chain:
-  `smoke.yml + run_host + host_collect_artifacts`.
-- Updated docs/spec/runbook with explicit smoke policy and commands.
+- `run_host.yml` now resolves runtime flag by policy:
+  - explicit `run_runtime_smoke` override (if provided and not `auto`) wins,
+  - otherwise `pipeline.run_runtime_smoke_default` is used.
+- `smoke.yml` now includes `run_host` as a conditional stage.
+- `smoke-full.yml` now equals `smoke.yml + host_collect_artifacts`.
+- `host-ci.yml` updated to use the same priority on `workflow_dispatch`:
+  - input `run_runtime_skip_db2` accepts `auto|true|false`,
+  - priority is `input` > `pipeline.run_runtime_skip_db2`.
+- `host-ci.yml` updated to use the same priority on `workflow_dispatch`:
+  - input `run_runtime_smoke` accepts `auto|true|false`,
+  - priority is `input` > `pipeline.run_runtime_smoke_default`.
+- Updated docs/spec/runbook with factual runtime policy and command examples.
 
 ### Reject conditions
 - `smoke.yml` and docs diverge,

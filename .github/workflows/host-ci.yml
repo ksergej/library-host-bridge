@@ -3,11 +3,24 @@ name: Host CI
 on:
   workflow_dispatch:
     inputs:
-      run_runtime_smoke:
-        description: "Run runtime host smoke step (playbooks/run_host.yml)"
+      run_runtime_skip_db2:
+        description: "DB2 stage mode for db2_schema/db2_data (auto|true|false)"
         required: false
-        type: boolean
-        default: false
+        type: choice
+        options:
+          - auto
+          - "true"
+          - "false"
+        default: auto
+      run_runtime_smoke:
+        description: "Runtime smoke mode for run_host.yml (auto|true|false)"
+        required: false
+        type: choice
+        options:
+          - auto
+          - "true"
+          - "false"
+        default: auto
   pull_request:
     paths:
       - "host-library-infra/**"
@@ -170,13 +183,17 @@ jobs:
           ansible-playbook -i inventories/hosts.ci.yml \
             playbooks/library_deploy.yml -e @.ci.extra-vars.yml
           ansible-playbook -i inventories/hosts.ci.yml \
-            playbooks/db2_schema.yml -e @.ci.extra-vars.yml
+            playbooks/db2_schema.yml \
+            -e @.ci.extra-vars.yml \
+            -e run_runtime_skip_db2="${{ github.event.inputs.run_runtime_skip_db2 }}"
           ansible-playbook -i inventories/hosts.ci.yml \
-            playbooks/db2_data.yml -e @.ci.extra-vars.yml
+            playbooks/db2_data.yml \
+            -e @.ci.extra-vars.yml \
+            -e run_runtime_skip_db2="${{ github.event.inputs.run_runtime_skip_db2 }}"
           ansible-playbook -i inventories/hosts.ci.yml \
             playbooks/compile_host.yml -e @.ci.extra-vars.yml
 
-      - name: Run minimal debug pipeline on push (deploy -> compile -> run, no DB2)
+      - name: Run minimal debug pipeline on push (deploy -> compile -> run_host by default policy)
         if: github.event_name == 'push' && steps.scope.outputs.run_minimal == 'true'
         run: |
           set -euo pipefail
@@ -190,13 +207,15 @@ jobs:
           ansible-playbook -i inventories/hosts.ci.yml \
             playbooks/run_host.yml -e @.ci.extra-vars.yml
 
-      - name: Optional runtime smoke (run_host)
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_runtime_smoke == 'true'
+      - name: Runtime smoke by mode (input override > pipeline default)
+        if: github.event_name == 'workflow_dispatch'
         run: |
           set -euo pipefail
           cd host-library-infra/ansible
           ansible-playbook -i inventories/hosts.ci.yml \
-            playbooks/run_host.yml -e @.ci.extra-vars.yml
+            playbooks/run_host.yml \
+            -e @.ci.extra-vars.yml \
+            -e run_runtime_smoke="${{ github.event.inputs.run_runtime_smoke }}"
 
       - name: Collect host artifacts (always)
         if: >-

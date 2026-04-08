@@ -5,6 +5,15 @@
 
   vars:
     jcl_pds: "{{ hlq }}.JCL"
+    run_runtime_skip_db2_default: "{{ pipeline.run_runtime_skip_db2 | default(true) }}"
+    run_runtime_skip_db2_effective: >-
+      {{
+        (
+          (run_runtime_skip_db2 is defined) and
+          ((run_runtime_skip_db2 | string | lower) != 'auto')
+        )
+        | ternary((run_runtime_skip_db2 | bool), (run_runtime_skip_db2_default | bool))
+      }}
     max_rc: "{{ pipeline.max_rc.schema | default(0) }}"
     wait_time_s: "{{ pipeline.wait_time_s.schema | default(300) }}"
 
@@ -14,6 +23,13 @@
     - ibm.ibm_zos_core
 
   tasks:
+    - name: Show DB2 schema mode
+      debug:
+        msg: >-
+          DB2 schema effective skip={{ run_runtime_skip_db2_effective }},
+          input={{ run_runtime_skip_db2 | default('undefined') }},
+          default={{ run_runtime_skip_db2_default }}.
+
     - name: Submit schema job LIBSCHEMA
       zos_job_submit:
         src: "{{ jcl_pds }}(LIBSCHEM)"
@@ -21,10 +37,12 @@
         wait_time_s: "{{ wait_time_s }}"
         return_output: true
       register: schema_job
+      when: not (run_runtime_skip_db2_effective | bool)
 
     - name: Show schema RC
       debug:
         msg: "Schema RC={{ schema_job.jobs[0].ret_code.msg }} (max_rc={{ max_rc }})"
+      when: not (run_runtime_skip_db2_effective | bool)
 
     - name: Fail if schema RC exceeds threshold
       ansible.builtin.fail:
@@ -32,4 +50,9 @@
           DB2 schema job failed RC policy:
           RC={{ schema_job.jobs[0].ret_code.msg }},
           threshold={{ max_rc }}.
-      when: schema_job.jobs[0].ret_code.code|int > max_rc|int
+      when: not (run_runtime_skip_db2_effective | bool) and (schema_job.jobs[0].ret_code.code|int > max_rc|int)
+
+    - name: DB2 schema is skipped
+      debug:
+        msg: "DB2 schema stage skipped by run_runtime_skip_db2=true."
+      when: run_runtime_skip_db2_effective | bool

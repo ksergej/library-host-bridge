@@ -29,10 +29,11 @@ environment_vars:
 pipeline:
   # F02-C policy:
   # - ssh_precheck is the first stage in smoke chains and CI execution paths.
-  # - smoke.yml: deploy -> db2_schema -> db2_data -> compile (no run)
-  # - smoke-full.yml: smoke.yml + run_host (+ optional artifact collection)
-  run_runtime_ssh_precheck: true
-  run_runtime_smoke_default: false
+  # - smoke.yml: deploy -> db2_schema/db2_data (optional) -> compile -> run_host (conditional)
+  # - smoke-full.yml: smoke.yml + host_collect_artifacts
+  run_runtime_ssh_precheck: false
+  run_runtime_skip_db2: true
+  run_runtime_smoke_default: true
   collect_artifacts_default: true
 
   # F02-D policy:

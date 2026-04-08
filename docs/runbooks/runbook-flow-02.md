@@ -63,7 +63,8 @@ When these parameters change, this table MUST be updated in the same commit.
 | `pipeline.wait_time_s.run` | integer seconds, e.g. `300` | Wait timeout for runtime job completion in `zos_job_submit`. |
 | `pipeline.artifacts.tracked_jobs` | list of job names, e.g. `LIBSCHEM`, `LIBDATA`, `CBLMQDB2`, `LIBMQTST` | Defines which jobs are queried/exported by `host_collect_artifacts.yml` into `summary.json` and per-job evidence files. |
 | `pipeline.run_runtime_ssh_precheck` | `true` / `false` | Runtime switch used by `ssh_precheck.yml`; when `false`, precheck task is skipped. |
-| `pipeline.run_runtime_smoke_default` | `true` / `false` | Policy default flag for runtime smoke mode (documentation/contract flag for workflow policy). |
+| `pipeline.run_runtime_skip_db2` | `true` / `false` | Default DB2 stage skip switch for `db2_schema.yml` and `db2_data.yml`; when `true`, only compile/run path remains. |
+| `pipeline.run_runtime_smoke_default` | `true` / `false` | Default runtime smoke switch used by `run_host.yml` when explicit override is not provided. |
 | `pipeline.collect_artifacts_default` | `true` / `false` | Policy default flag for artifact collection mode (documentation/contract flag for workflow policy). |
 
 ## Canonical Command Path (Local Operator)
@@ -102,6 +103,14 @@ ansible-playbook -i inventories/hosts.yml playbooks/host_collect_artifacts.yml \
 
 # or explicit full chain in one command:
 ansible-playbook -i inventories/hosts.yml playbooks/smoke-full.yml
+
+# force runtime smoke regardless of default:
+ansible-playbook -i inventories/hosts.yml playbooks/smoke-full.yml \
+  -e run_runtime_smoke=true
+
+# force DB2 execution even if default skip is true:
+ansible-playbook -i inventories/hosts.yml playbooks/smoke-full.yml \
+  -e run_runtime_skip_db2=false
 ```
 
 ## GitHub Actions Path (F02-A Contract)
@@ -121,14 +130,20 @@ Optional repository variable:
 Execution:
 1. `workflow_dispatch`:
    - full path `ssh_precheck -> library_deploy -> db2_schema -> db2_data -> compile_host`
-   - optional `run_host` via `run_runtime_smoke=true`.
+   - then `run_host`, where mode is resolved by priority:
+     `input run_runtime_smoke` (`auto|true|false`) > `pipeline.run_runtime_smoke_default`.
+   - DB2 mode is resolved by priority:
+     `input run_runtime_skip_db2` (`auto|true|false`) > `pipeline.run_runtime_skip_db2`.
 2. `push` (debug mode):
    - if push includes COBOL changes and no DB2 changes, CI runs
-     `ssh_precheck -> library_deploy -> compile_host -> run_host` (without DB2 steps).
+     `ssh_precheck -> library_deploy -> compile_host -> run_host` (without DB2 steps),
+     and `run_host` uses `pipeline.run_runtime_smoke_default`.
 
 Local smoke policy (F02-C):
-- `smoke.yml` = `ssh_precheck + deploy + db2 + compile` (default path, without runtime run).
-- `smoke-full.yml` = explicit full path with runtime run and artifact collection.
+- `smoke.yml` = `ssh_precheck + deploy + db2 + compile + run_host`.
+  `run_host` is conditional: by default uses `pipeline.run_runtime_smoke_default`,
+  and can be overridden by `-e run_runtime_smoke=true|false`.
+- `smoke-full.yml` = `smoke.yml + host_collect_artifacts`.
 
 How to run `workflow_dispatch` (GitHub UI):
 1. Open repository on GitHub.
@@ -136,7 +151,14 @@ How to run `workflow_dispatch` (GitHub UI):
 3. Select workflow `Host CI`.
 4. Click `Run workflow`.
 5. Select target branch.
-6. Optionally set `run_runtime_smoke=true` (to execute `playbooks/run_host.yml`).
+6. Set `run_runtime_smoke` mode:
+   - `auto`: use `pipeline.run_runtime_smoke_default`,
+   - `true`: force runtime smoke run,
+   - `false`: force skip runtime smoke.
+   Set `run_runtime_skip_db2` mode:
+   - `auto`: use `pipeline.run_runtime_skip_db2`,
+   - `true`: force skip DB2 schema/data stages,
+   - `false`: force run DB2 schema/data stages.
 7. Click `Run workflow` to start.
 
 ## Stage-by-Stage Verification

@@ -179,8 +179,13 @@ Host CI workflow (FLOW-02):
 - Workflow file: `.github/workflows/host-ci.yml`
 - Trigger: `workflow_dispatch` (manual) and host-related `push`/`pull_request` path filters
 - CI modes:
-  - `workflow_dispatch`: full host path (`ssh_precheck -> deploy -> db2 -> compile`, optional `run`)
-  - `push` (COBOL-only changes, no DB2 files): debug path (`ssh_precheck -> deploy -> compile -> run`)
+  - `workflow_dispatch`: full host path (`ssh_precheck -> deploy -> db2 -> compile -> run_host`)
+    with runtime mode priority:
+    `run_runtime_smoke (auto|true|false)` input > `pipeline.run_runtime_smoke_default`.
+    DB2 mode priority:
+    `run_runtime_skip_db2 (auto|true|false)` input > `pipeline.run_runtime_skip_db2`.
+  - `push` (COBOL-only changes, no DB2 files): debug path (`ssh_precheck -> deploy -> compile -> run_host`)
+    where `run_host` follows `pipeline.run_runtime_smoke_default`.
 - Required GitHub Secrets:
   - `ZOS_HOST`
   - `ZOS_SSH_USER`
