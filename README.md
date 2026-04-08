@@ -153,6 +153,13 @@ ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
   host-library-infra/ansible/playbooks/smoke-full.yml
 ```
 
+Canonical wrapper script for the host smoke path:
+
+```
+./scripts/cicd/host_smoke.sh
+./scripts/cicd/host_smoke.sh --full
+```
+
 Deploy-only + compile-only sequence:
 
 ```

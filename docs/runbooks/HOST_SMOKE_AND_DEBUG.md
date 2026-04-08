@@ -112,6 +112,13 @@ ansible-playbook -i host-library-infra/ansible/inventories/hosts.yml \
   host-library-infra/ansible/playbooks/smoke-full.yml
 ```
 
+Canonical wrapper script from repo root:
+
+```
+./scripts/cicd/host_smoke.sh
+./scripts/cicd/host_smoke.sh --full
+```
+
 Artifact collection (spool/evidence; can be run after failed stages):
 
 ```

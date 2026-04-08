@@ -78,6 +78,16 @@ Run from repo root unless stated otherwise.
 <command>
 ```
 
+## Canonical Helper Script (Optional)
+
+If the flow benefits from a single operator entrypoint, document the wrapper
+script or make target here. It MUST map back to the same command chain that is
+listed above.
+
+| Script / target | Default effect | Full / alternate mode | Notes |
+| --- | --- | --- | --- |
+| `<path>` | `<command chain>` | `<command chain + extra stage>` | `<usage notes>` |
+
 ## Stage-by-Stage Verification
 
 ### FXX-RUN-001 — <stage name>

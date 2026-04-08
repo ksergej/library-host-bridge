@@ -306,6 +306,8 @@ Make host inventory/vars portable across environments without secret leakage.
 
 ## Block F02-F — End-to-End Host Smoke Scriptability
 
+Status: done (2026-04-08)
+
 ### Goal
 Provide one operator command path for host smoke execution and diagnosis.
 
@@ -323,6 +325,14 @@ Provide one operator command path for host smoke execution and diagnosis.
 - single run path is copy/paste-ready,
 - operator can identify failing stage quickly.
 
+### Delivered
+- Added canonical wrapper script:
+  - `scripts/cicd/host_smoke.sh`
+- Updated runbook/spec/docs to include the wrapper as the preferred operator
+  entrypoint for the smoke chain.
+- Added troubleshooting entries for wrapper-script usage and missing override
+  inputs.
+
 ### Reject conditions
 - multiple conflicting command recipes,
 - missing mapping from error to recovery action.
@@ -330,6 +340,8 @@ Provide one operator command path for host smoke execution and diagnosis.
 ---
 
 ## Block F02-G — Create Canonical FLOW-02 Runbook
+
+Status: done (2026-04-08)
 
 ### Goal
 Create and lock an operational runbook for FLOW-02 with one canonical execution path.
@@ -349,6 +361,19 @@ Create and lock an operational runbook for FLOW-02 with one canonical execution 
 - runbook exists and is linked from FLOW-02 spec/todo,
 - operator can execute flow without reading chat history,
 - expected outcomes and failure diagnostics are explicit.
+
+### Delivered
+- Created and stabilized canonical runbook:
+  - `docs/runbooks/runbook-flow-02.md`
+- Added a canonical smoke wrapper entrypoint:
+  - `scripts/cicd/host_smoke.sh`
+- Runbook now includes:
+  - unified pipeline parameter catalog,
+  - inventory/vars security contract,
+  - canonical command path,
+  - wrapper script path,
+  - troubleshooting matrix,
+  - stage-by-stage verification records.
 
 ### Reject conditions
 - runbook duplicates outdated flow names/paths,

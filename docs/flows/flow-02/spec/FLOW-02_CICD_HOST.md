@@ -77,6 +77,9 @@ Notes:
   - `actions/setup-python@v6`,
   - `actions/upload-artifact@v5`.
 - Host inventory/group vars are under `host-library-infra/ansible/inventories`.
+- Canonical operator wrapper script:
+  - `scripts/cicd/host_smoke.sh`
+  - `scripts/cicd/host_smoke.sh --full`
 - `host-ci.yml` has two execution modes:
   - `workflow_dispatch`: full path
     `ssh_precheck -> deploy -> db2_schema -> db2_data -> compile -> run_host`
@@ -259,6 +262,8 @@ These items are not fully implemented yet:
 
 1. Optional MQSC health checks exist as JCL assets, but are not wired into the
    Ansible smoke sequence.
+2. The canonical smoke path is also available as a shell wrapper script for
+   operators who prefer a single command over the explicit playbook chain.
 
 ## 8) Correlation rule (must not change)
 
@@ -271,6 +276,7 @@ MQ correlation strategy remains canonical and unchanged:
 ## 9) Related docs
 
 - `docs/flows/flow-01/spec/FLOW-01_CICS_MQ_Manual_Then_CKTI.md`
+- `docs/runbooks/runbook-flow-02.md`
 - `docs/runbooks/HOST_SMOKE_AND_DEBUG.md`
 - `docs/runbooks/MODULES_AND_MVN_COMMANDS.md`
 - `host-library-infra/jcl/README_XPLORE_JOBS.md`

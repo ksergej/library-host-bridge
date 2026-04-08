@@ -12,6 +12,10 @@ This runbook defines the canonical operator path for FLOW-02:
 3. compile/link/bind host program,
 4. run optional runtime smoke.
 
+Canonical operator entrypoint:
+- `./scripts/cicd/host_smoke.sh`
+- `./scripts/cicd/host_smoke.sh --full`
+
 Locked first test scope:
 - `LIBSCHEM`
 - `LIBDATA`
@@ -139,6 +143,27 @@ ansible-playbook -i inventories/hosts.yml playbooks/smoke-full.yml \
 # force DB2 execution even if default skip is true:
 ansible-playbook -i inventories/hosts.yml playbooks/smoke-full.yml \
   -e run_runtime_skip_db2=false
+```
+
+### Canonical Smoke Wrapper Script
+
+Preferred operator entrypoint from repo root:
+
+```bash
+./scripts/cicd/host_smoke.sh
+```
+
+Full smoke plus artifact collection:
+
+```bash
+./scripts/cicd/host_smoke.sh --full
+```
+
+Optional runtime overrides:
+
+```bash
+RUN_RUNTIME_SMOKE=true ./scripts/cicd/host_smoke.sh
+RUN_RUNTIME_SKIP_DB2=false ./scripts/cicd/host_smoke.sh --full
 ```
 
 ## GitHub Actions Path (F02-A Contract)
@@ -331,6 +356,8 @@ Evidence:
 | `unsupported parameter wait` in `zos_job_submit` | old module arguments | use `wait_time_s` and `return_output` |
 | JCL member upload fails for name | member name > 8 chars | rename member to max 8 chars (for example `LIBSCHEM`) |
 | SQL upload truncation | SQL lines exceed FB/80 | keep SQL PDS as FB/80 and wrap SQL physical lines to <= 80 chars |
+| `host_smoke.sh` exits with usage | wrong mode flag or extra args | run `./scripts/cicd/host_smoke.sh` or `./scripts/cicd/host_smoke.sh --full` |
+| wrapper script says inventory/vars missing | tracked placeholders were not overridden | pass local override file or CI secrets, then rerun wrapper |
 
 ## Evidence Record Format
 
