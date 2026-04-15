@@ -1,0 +1,1 @@
+temp/approvalTest/cobolcheck.cmd -p NUMBERS ALPHA GREETING FILECOPY MOCKTEST DPICNUMBERS  > actual-output.txt

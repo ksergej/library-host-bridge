@@ -1,0 +1,126 @@
+# Cobol- and cobol-check-related gitignore entries
+*~
+*.lock
+*.DS_Store
+*.out
+ALLTESTS
+ALPHAT
+NUMBERST
+FILECOPYT
+GREETINGT
+*T.CBL
+LAUNCHTESTT
+CC##*
+
+# project specific
+testsuites/concatenatedTestsuites
+*.hprof
+envvars
+target/
+src/test/cobol/TESTPRG.CBL
+*.so
+
+# Windows specific
+
+*.dll
+*.exe
+
+vs-code-extension/**/package-lock.json
+vs-code-extension/**/out
+vs-code-extension/**/node_modules
+vs-code-extension/**/client/server
+vs-code-extension/**/.vscode-test
+vs-code-extension/**/Jenkinsfile
+vs-code-extension/Cobol-check/output/testResults.html
+
+# Java-related gitignore entries from: https://gist.github.com/dedunumax/54e82214715e35439227
+##############################
+## Java
+##############################
+.mtj.tmp/
+*.class
+*.jar
+# Below is made by ./gradlew prepareDistribution
+!vs-code-extension/Cobol-check/bin/*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+
+##############################
+## Maven
+##############################
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+pom.xml.bak
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+##############################
+## Gradle
+##############################
+bin/*
+build/*
+!build/distributions/
+.gradle
+.gradletasknamecache
+gradle-app.setting
+!gradle-wrapper.jar
+
+##############################
+## IntelliJ
+##############################
+out/
+.idea/
+.idea_modules/
+*.iml
+*.ipr
+*.iws
+
+##############################
+## Eclipse
+##############################
+.settings/
+tmp/
+.metadata
+.classpath
+.project
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.loadpath
+.factorypath
+
+##############################
+## NetBeans
+##############################
+nbproject/private/
+nbbuild/
+dist/
+nbdist/
+nbactions.xml
+nb-configuration.xml
+
+##############################
+## Visual Studio Code
+##############################
+.vscode/
+.code-workspace
+
+##############################
+## OS X
+##############################
+.DS_Store
+output/testResults.txt
+approval-test-actual.txt
+default.conf
+null
+ParserErrorLog.txt
+/zapp.json

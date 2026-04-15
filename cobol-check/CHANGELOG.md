@@ -1,0 +1,153 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## \[1.0.0\]
+
+### Planned
+
+- Before/After All
+- Parameterized tests
+
+## \[0.3.0\]
+
+### Planned
+
+- Mock CICS resources
+- Mock SQL tables
+- Mock batch file I/O
+
+## \[0.2.19\] 2025-11-26
+- Redistributed because the jar for the vscode extension had to be updated to the currently build version 0.2.19
+
+## \[0.2.19\] 2025-10-24
+- FD area variables are written til FD area. This removed the problem with programs having the same variable in WORKING-STORAGE twice. 
+
+## \[0.2.18\] 2025-06-02
+- Sequence numbers are handled correct in long lines
+
+## \[0.2.17\] 2025-04-02
+- Made sure we are using the correct encoding
+
+## \[0.2.16\] 2024-12-05
+- Fixed a bug an extra space would be added to the list of mocks, which would create issues when looking for mocks.
+- Added support for the replace statement in unit test source
+
+## \[0.2.14\] 2024-12-05
+- Fixed a bug where an exit code of 4 was not allowed.
+
+## \[0.2.13\] 2024-10-17
+- Fixing bug when JOIN followed by ON in next line is not only JOIN but f.ex. LEFT OUTER JOIN.
+
+## \[0.2.12\] 2024-10-07
+- Reverted unit test result twice fix and fixed the windows run tests script instead. This should fix double output error and missing output errors.
+- Bumped versions to properly release vscode extension that uses new cobol-check. 
+
+## \[0.2.11\] 2024-05-13
+- Fixing bug when cobolcheck.test.program.name was ending with white spaces.
+
+## \[0.2.10\] 2024-05-13
+- Fixing bug in showing unit test result twice.
+
+## \[0.2.9\] 2024-04-23
+- Better thread handling of the files processInput and processError 
+
+
+## \[0.2.8\] 2023-10-17
+### Implemented
+- Proper handling of END-EXEC without trailing period in WORKING-STORAGE
+- Fixed bugs in input argument handling
+- Fixed bug with spaces in path
+- Added default return code
+- Added ability to mock and verify calls without commas separating arguments
+- Fixes to the linter
+- Greatly improved management of mocked sections
+- Added the usage of test tree instead of own test run panel
+- Fixed a bug where numeric fields where not properly identified
+- Added a warning when a call was attempted and not mocked, and the ability to throw an error instead
+- Updated metadata on the extension
+- Improved usage of the Gnu COBOL compiler
+- Updated the test workflows
+- Added expanding of copybooks in exec-sql statements
+- And lots of other minor things
+
+## \[0.2.7\] 2023-03-21
+### Implemented
+- EXPECT now properly handles variable subscription without a space delimiter (EXPECT varibable(idx) TO BE 1)
+- COBOL level item 77 now handled properly 
+- More robust scanning of WORKING-STORAGE items
+- Corrected assignment of the various COBOL computational binary field types.
+
+## \[0.2.6\] 2023-01-12
+### Implemented
+- Datastructure-verification for Working Storage has been added.
+
+## \[0.2.5\] 2022-12-21
+### Implemented
+- Compiler options for COBOL Check's run of GnuCOBOL can be set in the config-file
+- Minor improvements to error handling
+
+## \[0.2.4\] 2022-11-02
+### Implemented
+- EXPECT accepts COBOL keywords again as the last keyword 
+- EXPECT handles negative numbers again
+ 
+## \[0.2.3\] 2022-10-28
+### Implemented
+- Implemented context aware syntax check
+- Minor bug fixes
+
+## \[0.2.2\] 2022-09-30
+### Implemented
+- Improved text output formatting on failed tests
+- Minor improvement for syntax error messages
+- Minor bug fixes
+
+## \[0.2.1\] 2022-08-18
+### Implemented
+- Fixed links in test results HTML
+- Made it possible to have sequence numbers in unit tests
+- Made error messages in the error log better
+
+
+## \[0.2.0\] 2022-07-15
+### Implemented
+- Mock paragraph
+- Mock section
+- Mock Call statement
+- Mocks can be global or local
+- Verification of the amount of times a mock was accessed
+- Before/After Each
+- Start- and end tags for injected code
+- Support for DECIMAL-POINT IS COMMA
+- Test output in XML JUnit format
+- Test output as HTML
+- Simple syntax and runtime error log for the cobol unit test language (cut)
+- Configuration for file encoding
+- Configuration for file access
+- Configuration for running or simply generating the test program
+- Configuration for including rules as the first part of the generated program
+
+### Known issues
+
+
+
+## \[0.1.0\] 2021-03-15
+
+### Implemented
+
+- Basic test case functionality 
+
+### Known issues 
+
+- On Microsoft Windows, the -p or --programs command-line option only works with a single program name at a time.
+
+## \[0.0.0\]
+
+### Added 2020-12-08
+
+- Started the cobol-check project as a follow-on to https://github.com/neopragma/cobol-unit-test, which was a proof-of-concept effort to produce a unit testing tool for Cobol that could exercise individual Cobol paragraphs in isolation.
+

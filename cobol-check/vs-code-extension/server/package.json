@@ -1,0 +1,17 @@
+{
+	"name": "cobol-check-extension-server",
+	"description": "Implementation of a cobol unit test language server in node.",
+	"version": "0.3.2",
+	"author": "Bankdata",
+	"license": "MIT",
+	"engines": {
+		"node": "*"
+	},
+	"dependencies": {
+		"vscode-languageserver": "^7.0.0",
+		"vscode-languageserver-textdocument": "^1.0.1",
+		"@types/vscode": "^1.52.0",
+		"@vscode/test-electron": "^2.3.9"
+	},
+	"scripts": {}
+}
